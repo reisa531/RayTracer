@@ -1,5 +1,4 @@
-use std::f64::INFINITY;
-
+use raytracer::Interval;
 use raytracer::Vec3;
 use raytracer::Point3;
 use raytracer::Color;
@@ -9,7 +8,7 @@ use raytracer::HittableList;
 use raytracer::hittable::Hittable;
 
 fn ray_color(r: &Ray, world: &dyn Hittable) -> Color {
-    if let Some(rec) = world.hit(r, 0.0, INFINITY) {
+    if let Some(rec) = world.hit(r, Interval::POSITIVE) {
         return (rec.normal + Color::new(1.0, 1.0, 1.0)) * 0.5;
     }
 
