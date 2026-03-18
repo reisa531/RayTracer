@@ -31,6 +31,12 @@ impl Interval {
         self.min < x && x < self.max
     }
 
+    pub fn clamp(self, x: f64) -> f64 {
+        if x < self.min { return self.min }
+        else if x > self.max { return self.max }
+        x
+    }
+
     pub const EMPTY: Interval = Interval {
         min: INFINITY,
         max: NEG_INFINITY
@@ -49,5 +55,10 @@ impl Interval {
     pub const NEGATIVE: Interval = Interval {
         min: NEG_INFINITY,
         max: 0.0
+    };
+
+    pub const PSEUDO_UNIT: Interval = Interval {
+        min: 0.0,
+        max: 0.999
     };
 }

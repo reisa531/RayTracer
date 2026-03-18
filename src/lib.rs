@@ -6,6 +6,7 @@ pub mod sphere;
 pub mod hittable_list;
 pub mod interval;
 pub mod camera;
+pub mod utils;
 
 pub use vec3::Vec3;
 pub use vec3::Point3;
