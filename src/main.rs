@@ -1,28 +1,18 @@
+use std::f64::INFINITY;
+
 use raytracer::Vec3;
 use raytracer::Point3;
 use raytracer::Color;
 use raytracer::Ray;
+use raytracer::Sphere;
+use raytracer::HittableList;
+use raytracer::hittable::Hittable;
 
-fn hit_sphere(center: Point3, radius: f64, r: &Ray) -> f64 {
-    let oc = center - *r.origin();
-    let a = (*r.direction()).length_squared();
-    let h = *r.direction() * oc;
-    let c = oc.length_squared() - radius * radius;
-    let discriminant = h * h - a * c;
-    if discriminant < 0.0 {
-        return -1.0;
+fn ray_color(r: &Ray, world: &dyn Hittable) -> Color {
+    if let Some(rec) = world.hit(r, 0.0, INFINITY) {
+        return (rec.normal + Color::new(1.0, 1.0, 1.0)) * 0.5;
     }
-    else {
-        return (h - discriminant.sqrt()) / a;
-    }
-}
 
-fn ray_color(r: &Ray) -> Color {
-    let t = hit_sphere(Point3::new(0.0, 0.0, -1.0), 0.5, r);
-    if t > 0.0 {
-        let n = (r.at(t) - Vec3::new(0.0, 0.0, -1.0)).unit();
-        return Color::new(n.x() + 1.0, n.y() + 1.0, n.z() + 1.0) * 0.5;
-    }
     let unit_ray = r.direction().unit();
     let a = 0.5 * (unit_ray.y() + 1.0);
     Color::new(1.0, 1.0, 1.0) * (1.0 - a) + Color::new(0.5, 0.7, 1.0) * a
@@ -32,6 +22,10 @@ fn main() {
     let aspect_ratio: f64 = 16.0 / 9.0;
     let image_width: i32 = 400;
     let image_height: i32 = ((image_width as f64) / aspect_ratio).max(1.0) as i32;
+
+    let mut world: HittableList = Vec::new();
+    world.push(Box::new(Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5)));
+    world.push(Box::new(Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0)));
 
     let focal_length: f64 = 1.0;
     let viewport_height: f64 = 2.0;
@@ -57,7 +51,7 @@ fn main() {
             let ray_direction = pixel_center - camera_center;
 
             let ray = Ray::new(camera_center.clone(), ray_direction);
-            let pixel_color = ray_color(&ray);
+            let pixel_color = ray_color(&ray, &world);
 
             pixel_color.print_color();
         }
