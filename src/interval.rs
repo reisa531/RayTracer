@@ -57,6 +57,11 @@ impl Interval {
         max: 0.0
     };
 
+    pub const PSEUDO_POSITIVE: Interval = Interval {
+        min: 0.001,
+        max: INFINITY
+    };
+
     pub const PSEUDO_UNIT: Interval = Interval {
         min: 0.0,
         max: 0.999
