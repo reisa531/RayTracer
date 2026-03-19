@@ -229,4 +229,11 @@ impl Vec3 {
     pub fn reflect(v: Vec3, n: Vec3) -> Vec3 {
         v - 2.0 * v * n * n
     }
+
+    pub fn refract(uv: Vec3, n: Vec3, refractive_index: f64) -> Vec3 {
+        let cos_theta = (-uv * n).min(1.0);
+        let r_out_perp = refractive_index * (uv + cos_theta * n);
+        let r_out_parallel = -(1.0 - r_out_perp.length_squared()).sqrt() * n;
+        r_out_perp + r_out_parallel
+    }
 }

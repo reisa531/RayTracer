@@ -21,3 +21,4 @@ pub use camera::Camera;
 pub use material::Material;
 pub use material::Lambertian;
 pub use material::Metal;
+pub use material::Dielectric;
