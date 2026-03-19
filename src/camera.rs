@@ -18,6 +18,8 @@ pub struct Camera {
     pub lookfrom: Point3,
     pub lookat: Point3,
     pub vup: Vec3,
+    pub defocus_angle: f64,
+    pub focus_dist: f64,
     image_height: i32,
     pixel_sample_scale: f64,
     center: Point3,
@@ -26,26 +28,28 @@ pub struct Camera {
     pixel_delta_v: Vec3,
     // u: Vec3,
     // v: Vec3,
-    // w: Vec3
+    // w: Vec3,
+    defocus_disk_u: Vec3,
+    defocus_disk_v: Vec3
 }
 
 impl Camera {
     pub fn new(aspect_ratio: f64, image_width: i32, samples_per_pixel: i32, max_depth: i32,
-            vfov: f64, lookfrom: Point3, lookat: Point3, vup: Vec3) -> Self {
+            vfov: f64, lookfrom: Point3, lookat: Point3, vup: Vec3,
+            defocus_angle: f64, focus_dist: f64) -> Self {
         let image_height: i32 = ((image_width as f64) / aspect_ratio).max(1.0) as i32;
 
         let pixel_sample_scale = 1.0 / (samples_per_pixel as f64);
 
-        let focal_length: f64 = (lookat - lookfrom).length();
         let theta = degrees_to_radians(vfov);
         let h = (theta / 2.0).tan();
-        let viewport_height: f64 = h * 2.0 * focal_length;
+        let viewport_height: f64 = h * 2.0 * focus_dist;
         let viewport_width: f64 = viewport_height * (image_width as f64) / (image_height as f64);
         let center = lookfrom;
 
         let w = (lookfrom - lookat).unit();
-        let u = Vec3::cross(&vup, &w).unit();
-        let v = Vec3::cross(&w, &u);
+        let u = Vec3::cross(&w, &vup).unit();
+        let v = Vec3::cross(&u, &w);
 
         eprintln!("{:?}\n{:?}\n{:?}", u, v, w);
 
@@ -55,10 +59,14 @@ impl Camera {
         let pixel_delta_u = viewport_u / (image_width as f64);
         let pixel_delta_v = viewport_v / (image_height as f64);
 
-        let viewport_upper_left = center - focal_length * w
+        let viewport_upper_left = center - focus_dist * w
             - viewport_u / 2.0 - viewport_v / 2.0;
 
         let pixel00_loc = viewport_upper_left + (pixel_delta_u + pixel_delta_v) / 2.0;
+
+        let focus_radius = focus_dist * (degrees_to_radians(defocus_angle / 2.0)).tan();
+        let defocus_disk_u = focus_radius * u;
+        let defocus_disk_v = focus_radius * v;
 
         Camera {
             aspect_ratio,
@@ -69,6 +77,8 @@ impl Camera {
             lookfrom,
             lookat,
             vup,
+            defocus_angle,
+            focus_dist,
             image_height,
             pixel_sample_scale,
             center,
@@ -77,7 +87,9 @@ impl Camera {
             pixel_delta_v,
             // u,
             // v,
-            // w
+            // w,
+            defocus_disk_u,
+            defocus_disk_v
         }
     }
 
@@ -104,13 +116,18 @@ impl Camera {
         Vec3::new(random_real(rng) + 0.5, random_real(rng) + 0.5, 0.0)
     }
 
+    fn sample_defocus_disk(&self, rng: &mut dyn RngCore) -> Vec3 {
+        let p = Vec3::random_in_unit_disk(rng);
+        self.center + (p.x() * self.defocus_disk_u) + (p.y() * self.defocus_disk_v)
+    }
+
     fn get_ray(&self, i: i32, j: i32, rng: &mut dyn RngCore) -> Ray {
         let offset = Self::sample_square(rng);
         let pixel_sample = self.pixel00_loc
             + self.pixel_delta_u * (i as f64 + offset.x())
             + self.pixel_delta_v * (j as f64 + offset.y());
 
-        let ray_origin = self.center;
+        let ray_origin = if self.defocus_angle <= 0.0 { self.center } else { self.sample_defocus_disk(rng) };
         let ray_direction = pixel_sample - ray_origin;
 
         Ray::new(ray_origin, ray_direction)

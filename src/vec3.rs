@@ -1,7 +1,7 @@
 use std::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign};
 use rand::RngCore;
 
-use crate::utils::{self, random_real_interval};
+use crate::utils::{self, random_real, random_real_interval};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Vec3 {
@@ -208,6 +208,13 @@ impl Vec3 {
             phi.sin() * theta.sin(),
             z
         )
+    }
+
+    pub fn random_in_unit_disk(rng: &mut dyn RngCore) -> Self {
+        let theta = random_real(rng) * 2.0 * utils::PI;
+        let radius = random_real(rng).sqrt();
+
+        Vec3::new(radius * theta.cos(), radius * theta.sin(), 0.0)
     }
 
     pub fn random_unit_on_hemishpere(normal: &Vec3, rng: &mut dyn RngCore) -> Self {
