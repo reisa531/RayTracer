@@ -55,9 +55,11 @@ impl Camera {
         }
     }
 
-    fn ray_color(&self, r: &Ray, world: &dyn Hittable) -> Color {
+    fn ray_color<R: Rng>(&self, r: &Ray, world: &dyn Hittable, rng: &mut R) -> Color {
         if let Some(rec) = world.hit(r, Interval::POSITIVE) {
-            return (rec.normal + Color::new(1.0, 1.0, 1.0)) * 0.5;
+            // return (rec.normal + Color::new(1.0, 1.0, 1.0)) * 0.5;
+            let direction = Vec3::random_unit_on_hemishpere(&rec.normal, rng);
+            return self.ray_color(&Ray::new(rec.p, direction), world, rng) * 0.5;
         }
 
         let unit_ray = r.direction().unit();
@@ -94,7 +96,7 @@ impl Camera {
                 let mut pixel_color = Color::new(0.0, 0.0, 0.0);
                 for _ in 0..self.samples_per_pixel {
                     let ray = self.get_ray(i, j, &mut rng);
-                    pixel_color += self.ray_color(&ray, world);
+                    pixel_color += self.ray_color(&ray, world, &mut rng);
                 }
                 pixel_color *= self.pixel_sample_scale;
                 pixel_color.print_color();

@@ -1,4 +1,6 @@
 use std::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign};
+use rand::Rng;
+use crate::utils::{self, random_real, random_real_interval};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Vec3 {
@@ -180,5 +182,27 @@ impl Vec3 {
     pub fn unit(self) -> Self {
         let len = self.length();
         self / len
+    }
+
+    pub fn random_unit<R: Rng>(rng: &mut R) -> Self {
+        let theta: f64 = random_real_interval(rng, 0.0, 2.0 * utils::PI);
+        let z: f64 = random_real(rng);
+        let phi: f64 = z.acos();
+        
+        Vec3::new(
+            phi.sin() * theta.cos(),
+            phi.sin() * theta.sin(),
+            z
+        )
+    }
+
+    pub fn random_unit_on_hemishpere<R: Rng>(normal: &Vec3, rng: &mut R) -> Self {
+        let unit = Self::random_unit(rng);
+        if unit * *normal > 0.0 {
+            return unit;
+        }
+        else {
+            return -unit;
+        }
     }
 }
