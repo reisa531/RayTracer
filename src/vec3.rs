@@ -122,7 +122,7 @@ impl MulAssign<f64> for Vec3 {
     fn mul_assign(&mut self, other: f64) {
         self.e[0] *= other;
         self.e[1] *= other;
-        self.e[1] *= other;
+        self.e[2] *= other;
     }
 }
 
@@ -130,7 +130,7 @@ impl DivAssign<f64> for Vec3 {
     fn div_assign(&mut self, other: f64) {
         self.e[0] /= other;
         self.e[1] /= other;
-        self.e[1] /= other;
+        self.e[2] /= other;
     }
 }
 

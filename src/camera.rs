@@ -1,14 +1,19 @@
 use crate::color::Color;
 use crate::hittable::Hittable;
+use crate::utils::random_real;
 use crate::vec3::Vec3;
 use crate::vec3::Point3;
 use crate::interval::Interval;
 use crate::ray::Ray;
 
+use::rand::Rng;
+
 pub struct Camera {
     pub aspect_ratio: f64,
     pub image_width: i32,
+    pub samples_per_pixel: i32,
     image_height: i32,
+    pixel_sample_scale: f64,
     center: Point3,
     pixel00_loc: Point3,
     pixel_delta_u: Vec3,
@@ -16,8 +21,10 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(aspect_ratio: f64, image_width: i32) -> Self {
+    pub fn new(aspect_ratio: f64, image_width: i32, samples_per_pixel: i32) -> Self {
         let image_height: i32 = ((image_width as f64) / aspect_ratio).max(1.0) as i32;
+
+        let pixel_sample_scale = 1.0 / (samples_per_pixel as f64);
 
         let focal_length: f64 = 1.0;
         let viewport_height: f64 = 2.0;
@@ -38,7 +45,9 @@ impl Camera {
         Camera {
             aspect_ratio,
             image_width,
+            samples_per_pixel,
             image_height,
+            pixel_sample_scale,
             center,
             pixel00_loc,
             pixel_delta_u,
@@ -57,20 +66,41 @@ impl Camera {
         Color::new(1.0, 1.0, 1.0) * (1.0 - a) + Color::new(0.5, 0.7, 1.0) * a
     }
 
+    fn sample_square<R: Rng>(rng: &mut R) -> Vec3 {
+        Vec3::new(random_real(rng) + 0.5, random_real(rng) + 0.5, 0.0)
+    }
+
+    fn get_ray<R: Rng>(&self, i: i32, j: i32, rng: &mut R) -> Ray {
+        let offset = Self::sample_square(rng);
+        let pixel_sample = self.pixel00_loc
+            + self.pixel_delta_u * (i as f64 + offset.x())
+            + self.pixel_delta_v * (j as f64 + offset.y());
+
+        let ray_origin = self.center;
+        let ray_direction = pixel_sample - ray_origin;
+
+        Ray::new(ray_origin, ray_direction)
+    }
+
     pub fn render(&self, world: &dyn Hittable) {
         println!("P3\n{} {}\n255", self.image_width, self.image_height);
 
         for j in 0..self.image_height {
+            if (self.image_height - j) % 10 == 0 {
+                eprintln!("{} scanlines remaining...", self.image_height - j);
+            }
             for i in 0..self.image_width {
-                let pixel_center = self.pixel00_loc
-                    + self.pixel_delta_u * (i as f64) + self.pixel_delta_v * (j as f64);
-                let ray_direction = pixel_center - self.center;
-
-                let ray = Ray::new(self.center.clone(), ray_direction);
-                let pixel_color = self.ray_color( &ray, world);
-
+                let mut rng = rand::thread_rng();
+                let mut pixel_color = Color::new(0.0, 0.0, 0.0);
+                for _ in 0..self.samples_per_pixel {
+                    let ray = self.get_ray(i, j, &mut rng);
+                    pixel_color += self.ray_color(&ray, world);
+                }
+                pixel_color *= self.pixel_sample_scale;
                 pixel_color.print_color();
             }
         }
+
+        eprintln!("done.");
     }
 }
