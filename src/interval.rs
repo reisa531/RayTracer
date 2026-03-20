@@ -52,6 +52,10 @@ impl Interval {
         }
     }
 
+    pub fn size(&self) -> f64 {
+        (self.max - self.min).max(0.0)
+    }
+
     pub const EMPTY: Interval = Interval {
         min: INFINITY,
         max: NEG_INFINITY

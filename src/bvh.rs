@@ -38,7 +38,12 @@ impl BVHNode {
 
 impl BVHNode {
     pub fn build(objects: &mut [Arc<dyn Hittable>], rng: &mut dyn RngCore) -> Self {
-        let axis: i32 = random_integer_interval(rng, 0, 2);
+        let mut bbox = AABB::EMPTY;
+        for object in &mut *objects {
+            bbox = AABB::from_aabbs(&bbox, &object.bounding_box());
+        }
+
+        let axis: i32 = bbox.longest_axis();
 
         let comparator = if axis == 0 { Self::box_x_compare }
             else if axis == 1 { Self::box_y_compare }

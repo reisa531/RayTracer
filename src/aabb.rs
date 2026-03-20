@@ -70,4 +70,35 @@ impl AABB {
 
         true
     }
+
+    pub fn longest_axis(&self) -> i32 {
+        if self.x.size() > self.y.size() {
+            if self.x.size() > self.z.size() {
+                return 0;
+            }
+            else {
+                return 2;
+            }
+        }
+        else {
+            if self.y.size() > self.z.size() {
+                return 1;
+            }
+            else {
+                return 2;
+            }
+        }
+    }
+
+    pub const EMPTY: AABB = AABB {
+        x: Interval::EMPTY,
+        y: Interval::EMPTY,
+        z: Interval::EMPTY
+    };
+
+    pub const UNIVERSE: AABB = AABB {
+        x: Interval::UNIVERSE,
+        y: Interval::UNIVERSE,
+        z: Interval::UNIVERSE
+    };
 }
