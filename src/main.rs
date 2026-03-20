@@ -10,12 +10,12 @@ use raytracer::Metal;
 use raytracer::utils::random_real;
 use raytracer::utils::random_real_interval;
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 fn main() {
     let mut world: HittableList = Vec::new();
 
-    let material_ground = Rc::new(Lambertian::new(0.5, 0.5, 0.5));
+    let material_ground = Arc::new(Lambertian::new(0.5, 0.5, 0.5));
     world.push(Box::new(Sphere::new(Point3::new(0.0, -1000.0, -1.0), 1000.0, material_ground)));
 
     let mut rng = rand::thread_rng();
@@ -33,7 +33,7 @@ fn main() {
                 if choose_mat < 0.8 {
                     let color = Color::new(random_real(&mut rng), random_real(&mut rng), random_real(&mut rng));
                     let albedo = color.hadamard_product(color);
-                    let material_sphere = Rc::new(Lambertian::from_color(albedo));
+                    let material_sphere = Arc::new(Lambertian::from_color(albedo));
                     let center1 = center + Vec3::new(0.0, random_real_interval(&mut rng, 0.0, 0.5), 0.0);
                     world.push(Box::new(Sphere::new_moving(center, center1, 0.2, material_sphere)));
                 }
@@ -44,24 +44,24 @@ fn main() {
                         random_real_interval(&mut rng, 0.5, 1.0)
                     );
                     let fuzz = random_real_interval(&mut rng, 0.0, 0.5);
-                    let material_sphere = Rc::new(Metal::from_color(color, fuzz));
+                    let material_sphere = Arc::new(Metal::from_color(color, fuzz));
                     world.push(Box::new(Sphere::new(center, 0.2, material_sphere)));
                 }
                 else {
-                    let material_sphere = Rc::new(Dielectric::new(1.5));
+                    let material_sphere = Arc::new(Dielectric::new(1.5));
                     world.push(Box::new(Sphere::new(center, 0.2, material_sphere)));
                 }
             }
         }
     }
 
-    let material1 = Rc::new(Dielectric::new(1.5));
+    let material1 = Arc::new(Dielectric::new(1.5));
     world.push(Box::new(Sphere::new(Point3::new(0.0,1.0, 0.0), 1.0, material1)));
 
-    let material2 = Rc::new(Lambertian::new(0.4, 0.2, 0.1));
+    let material2 = Arc::new(Lambertian::new(0.4, 0.2, 0.1));
     world.push(Box::new(Sphere::new(Point3::new(-4.0,1.0, 0.0), 1.0, material2)));
 
-    let material3 = Rc::new(Metal::new(0.7, 0.6, 0.5, 0.0));
+    let material3 = Arc::new(Metal::new(0.7, 0.6, 0.5, 0.0));
     world.push(Box::new(Sphere::new(Point3::new(4.0,1.0, 0.0), 1.0, material3)));
 
     let cam = Camera::new(16.0 / 9.0, 400,

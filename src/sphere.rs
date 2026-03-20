@@ -6,16 +6,16 @@ use crate::ray::Ray;
 use crate::interval::Interval;
 use crate::material::Material;
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct Sphere {
     center: Ray,
     radius: f64,
-    mat: Rc<dyn Material>
+    mat: Arc<dyn Material>
 }
 
 impl Sphere {
-    pub fn new(static_center: Point3, radius: f64, mat: Rc<dyn Material>) -> Self {
+    pub fn new(static_center: Point3, radius: f64, mat: Arc<dyn Material>) -> Self {
         Sphere {
             center: Ray::new(static_center, Vec3::new(0.0, 0.0, 0.0), 0.0),
             radius: radius.max(0.0),
@@ -23,7 +23,7 @@ impl Sphere {
         }
     }
 
-    pub fn new_moving(center0: Point3, center1: Point3, radius: f64, mat: Rc<dyn Material>) -> Self {
+    pub fn new_moving(center0: Point3, center1: Point3, radius: f64, mat: Arc<dyn Material>) -> Self {
         Sphere {
             center: Ray::new(center0, center1 - center0, 0.0),
             radius: radius.max(0.0),

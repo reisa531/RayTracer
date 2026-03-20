@@ -7,16 +7,16 @@ use raytracer::Camera;
 use raytracer::Lambertian;
 use raytracer::Metal;
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 fn main() {
     let mut world: HittableList = Vec::new();
 
-    let material_ground = Rc::new(Lambertian::new(0.8, 0.8, 0.0));
-    let material_center = Rc::new(Lambertian::new(0.1, 0.2, 0.5));
-    let material_left = Rc::new(Dielectric::new(1.5));
-    let material_bubble = Rc::new(Dielectric::new(1.0 / 1.5));
-    let material_right = Rc::new(Metal::new(0.8, 0.6, 0.2, 1.0));
+    let material_ground = Arc::new(Lambertian::new(0.8, 0.8, 0.0));
+    let material_center = Arc::new(Lambertian::new(0.1, 0.2, 0.5));
+    let material_left = Arc::new(Dielectric::new(1.5));
+    let material_bubble = Arc::new(Dielectric::new(1.0 / 1.5));
+    let material_right = Arc::new(Metal::new(0.8, 0.6, 0.2, 1.0));
 
     world.push(Box::new(Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0, material_ground)));
     world.push(Box::new(Sphere::new(Point3::new(0.0, 0.0, -1.2), 0.5, material_center)));

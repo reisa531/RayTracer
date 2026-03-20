@@ -9,6 +9,9 @@ use crate::ray::Ray;
 
 use::rand::RngCore;
 
+use::rayon::prelude::*;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 pub struct Camera {
     pub aspect_ratio: f64,
     pub image_width: i32,
@@ -136,11 +139,15 @@ impl Camera {
     pub fn render(&self, world: &dyn Hittable) {
         println!("P3\n{} {}\n255", self.image_width, self.image_height);
 
-        for j in 0..self.image_height {
-            if (self.image_height - j) % 10 == 0 {
-                eprintln!("{} scanlines remaining...", self.image_height - j);
-            }
-            for i in 0..self.image_width {
+        // let total_pixels = self.image_width * self.image_height;
+        let pixels_done = AtomicUsize::new(0);
+        let pixels: Vec<(i32, i32)> = (0..self.image_height)
+            .flat_map(|j| (0..self.image_width).map(move |i| (i, j)))
+            .collect();
+
+        let colors: Vec<Color> = pixels
+            .par_iter()
+            .map(|&(i, j)| {
                 let mut rng = rand::thread_rng();
                 let mut pixel_color = Color::new(0.0, 0.0, 0.0);
                 for _ in 0..self.samples_per_pixel {
@@ -148,9 +155,34 @@ impl Camera {
                     pixel_color += self.ray_color(&ray, world, &mut rng, 0);
                 }
                 pixel_color *= self.pixel_sample_scale;
-                pixel_color.print_color();
-            }
+
+                let done = pixels_done.fetch_add(1, Ordering::Relaxed) + 1;
+                if done % (self.image_width as usize) == 0 {
+                    eprintln!("{} scanlines remaining...", self.image_height - (done / (self.image_width as usize)) as i32);
+                }
+
+                pixel_color
+        }).collect();
+
+        for color in colors {
+            color.print_color();
         }
+
+        // for j in 0..self.image_height {
+        //     if (self.image_height - j) % 10 == 0 {
+        //         eprintln!("{} scanlines remaining...", self.image_height - j);
+        //     }
+        //     for i in 0..self.image_width {
+        //         let mut rng = rand::thread_rng();
+        //         let mut pixel_color = Color::new(0.0, 0.0, 0.0);
+        //         for _ in 0..self.samples_per_pixel {
+        //             let ray = self.get_ray(i, j, random_real(&mut rng), &mut rng);
+        //             pixel_color += self.ray_color(&ray, world, &mut rng, 0);
+        //         }
+        //         pixel_color *= self.pixel_sample_scale;
+        //         pixel_color.print_color();
+        //     }
+        // }
 
         eprintln!("done.");
     }

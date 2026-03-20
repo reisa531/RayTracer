@@ -6,7 +6,7 @@ use crate::utils::random_real;
 
 use rand::RngCore;
 
-pub trait Material {
+pub trait Material: Send + Sync {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord, rng: &mut dyn RngCore) -> Option<(Color, Ray)>;
 }
 
