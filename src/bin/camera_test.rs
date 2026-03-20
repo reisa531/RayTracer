@@ -10,7 +10,7 @@ use raytracer::Metal;
 use std::sync::Arc;
 
 fn main() {
-    let mut world: HittableList = Vec::new();
+    let mut world: HittableList = HittableList::default();
 
     let material_ground = Arc::new(Lambertian::new(0.8, 0.8, 0.0));
     let material_center = Arc::new(Lambertian::new(0.1, 0.2, 0.5));

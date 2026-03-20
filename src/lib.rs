@@ -7,6 +7,7 @@ pub mod hittable_list;
 pub mod interval;
 pub mod camera;
 pub mod material;
+pub mod aabb;
 pub mod utils;
 
 pub use vec3::Vec3;
@@ -22,3 +23,4 @@ pub use material::Material;
 pub use material::Lambertian;
 pub use material::Metal;
 pub use material::Dielectric;
+pub use aabb::AABB;

@@ -13,7 +13,7 @@ use raytracer::utils::random_real_interval;
 use std::sync::Arc;
 
 fn main() {
-    let mut world: HittableList = Vec::new();
+    let mut world: HittableList = HittableList::default();
 
     let material_ground = Arc::new(Lambertian::new(0.5, 0.5, 0.5));
     world.push(Box::new(Sphere::new(Point3::new(0.0, -1000.0, -1.0), 1000.0, material_ground)));
@@ -64,8 +64,8 @@ fn main() {
     let material3 = Arc::new(Metal::new(0.7, 0.6, 0.5, 0.0));
     world.push(Box::new(Sphere::new(Point3::new(4.0,1.0, 0.0), 1.0, material3)));
 
-    let cam = Camera::new(16.0 / 9.0, 1200,
-            500, 50, 20.0,
+    let cam = Camera::new(16.0 / 9.0, 400,
+            100, 50, 20.0,
             Point3::new(-13.0, 2.0, 3.0),
             Point3::new(0.0, 0.0, 0.0),
             Vec3::new(0.0, 1.0, 0.0),

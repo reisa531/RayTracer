@@ -3,6 +3,7 @@ use crate::vec3::Point3;
 use crate::ray::Ray;
 use crate::interval::Interval;
 use crate::material::Material;
+use crate::aabb::AABB;
 
 use::std::sync::Arc;
 
@@ -25,4 +26,6 @@ impl HitRecord {
 
 pub trait Hittable: Send + Sync {
     fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord>;
+
+    fn bounding_box(&self) -> AABB;
 }
