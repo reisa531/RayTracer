@@ -8,6 +8,7 @@ pub mod interval;
 pub mod camera;
 pub mod material;
 pub mod aabb;
+pub mod bvh;
 pub mod utils;
 
 pub use vec3::Vec3;
@@ -24,3 +25,4 @@ pub use material::Lambertian;
 pub use material::Metal;
 pub use material::Dielectric;
 pub use aabb::AABB;
+pub use bvh::BVHNode;

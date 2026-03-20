@@ -7,6 +7,8 @@ use crate::aabb::AABB;
 
 use::std::sync::Arc;
 
+#[derive(Clone)]
+
 pub struct HitRecord {
     pub p: Point3,
     pub normal: Vec3,

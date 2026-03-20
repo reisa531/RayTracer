@@ -20,8 +20,8 @@ fn main() {
 
     let mut rng = rand::thread_rng();
 
-    for a in -11..11 {
-        for b in -11..11 {
+    for a in -21..21 {
+        for b in -21..21 {
             let choose_mat = random_real(&mut rng);
             let center = Point3::new(
                 (a as f64) + 0.9 * random_real(&mut rng),
@@ -70,6 +70,8 @@ fn main() {
             Point3::new(0.0, 0.0, 0.0),
             Vec3::new(0.0, 1.0, 0.0),
             0.6, 10.0);
-
+    
+    let world = HittableList::to_bvh(world, &mut rng);
+    
     cam.render(&world);
 }

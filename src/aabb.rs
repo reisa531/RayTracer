@@ -44,7 +44,6 @@ impl AABB {
     pub fn hit(&self, r: &Ray, ray_t: Interval) -> bool {
         let ray_orig: &Point3 = r.origin();
         let ray_dir: &Vec3 = r.direction();
-        let mut result_interval: Interval = ray_t;
 
         for axis in 0..3 {
             let ax: &Interval = self.axis_interval(axis);
@@ -52,6 +51,8 @@ impl AABB {
 
             let t0 = (ax.min - ray_orig[axis as usize]) * adinv;
             let t1 = (ax.max - ray_orig[axis as usize]) * adinv;
+
+            let mut result_interval: Interval = ray_t;
 
             if t0 < t1 {
                 if t0 > result_interval.min { result_interval.min = t0; }
