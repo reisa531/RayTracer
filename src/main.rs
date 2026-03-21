@@ -9,6 +9,7 @@ use raytracer::Camera;
 use raytracer::Lambertian;
 use raytracer::Metal;
 use raytracer::texture::ImageTexture;
+use raytracer::texture::NoiseTexture;
 use raytracer::utils::random_real;
 use raytracer::utils::random_real_interval;
 
@@ -127,13 +128,31 @@ fn earth() {
     cam.render(&world);
 }
 
+fn perlin_spheres() {
+    let mut world: HittableList = HittableList::default();
+
+    let pertext = Arc::new(NoiseTexture::new());
+    world.push(Box::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, Arc::new(Lambertian::from_texture(pertext.clone())))));
+    world.push(Box::new(Sphere::new(Point3::new(0.0, 2.0, 0.0), 2.0, Arc::new(Lambertian::from_texture(pertext)))));
+
+    let cam = Camera::new(16.0 / 9.0, 1200,
+            500, 50, 20.0,
+            Point3::new(13.0, 2.0, 3.0),
+            Point3::new(0.0, 0.0, 0.0),
+            Vec3::new(0.0, 1.0, 0.0),
+            0.0, 10.0);
+
+    cam.render(&world);
+}
+
 fn main() {
-    let scenario = 3;
+    let scenario = 4;
 
     match scenario {
         1 => bouncing_spheres(),
         2 => checkered_spheres(),
         3 => earth(),
+        4 => perlin_spheres(),
         _ => eprintln!("Invalid!")
     }
 }

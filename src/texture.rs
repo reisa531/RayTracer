@@ -1,8 +1,9 @@
-use crate::image_parser::parse_image;
+pub use crate::image_parser::parse_image;
 pub use crate::vec3::Point3;
 pub use crate::color::Color;
 pub use crate::interval::Interval;
 pub use crate::image_parser;
+pub use crate::perlin::Perlin;
 
 pub use std::sync::Arc;
 pub use std::vec::Vec;
@@ -23,6 +24,10 @@ pub struct CheckerTexture {
 
 pub struct ImageTexture {
     image: (u32, u32, Vec<Color>)
+}
+
+pub struct NoiseTexture {
+    noise: Perlin
 }
 
 impl SolidColor {
@@ -113,5 +118,19 @@ impl Texture for ImageTexture {
 
         // parse_image uses rgb32f; values are already in [0, 1].
         pixel
+    }
+}
+
+impl NoiseTexture {
+    pub fn new() -> Self {
+        Self {
+            noise: Perlin::new()
+        }
+    }
+}
+
+impl Texture for NoiseTexture {
+    fn color_at(&self, _u: f64, _v: f64, p: &Point3) -> Color {
+        Color::new(1.0, 1.0, 1.0) * self.noise.noise(p)
     }
 }
