@@ -117,7 +117,6 @@ impl Texture for ImageTexture {
         let j = j.min((self.height() - 1) as usize);
         let pixel = self.pixel(i, j);
 
-        // parse_image uses rgb32f; values are already in [0, 1].
         pixel
     }
 }
@@ -133,7 +132,9 @@ impl NoiseTexture {
 
 impl Texture for NoiseTexture {
     fn color_at(&self, _u: f64, _v: f64, p: &Point3) -> Color {
-        let noise_point = self.scale * *p;
-        Color::new(1.0, 1.0, 1.0) * 0.5 * (1.0 + self.noise.noise(&noise_point))
+        // let noise_point = self.scale * *p;
+        // Color::new(1.0, 1.0, 1.0) * 0.5 * (1.0 + self.noise.noise(&noise_point))
+
+        Color::new(0.5, 0.5, 0.5) * (1.0 + (self.scale * p.z() + 10.0 * self.noise.turb(p, 7)).sin())
     }
 }
