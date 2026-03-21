@@ -75,7 +75,9 @@ impl Hittable for Sphere {
             normal: (recordp - current_center) / self.radius,
             mat: self.mat.clone(),
             p: recordp,
-            front_face: true
+            front_face: true,
+            u: 0.0,
+            v: 0.0
         };
 
         let outward_normal = (record.p.clone() - current_center) / self.radius;

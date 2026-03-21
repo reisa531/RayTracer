@@ -1,3 +1,4 @@
+use raytracer::CheckerTexture;
 use raytracer::Vec3;
 use raytracer::Color;
 use raytracer::Dielectric;
@@ -15,13 +16,18 @@ use std::sync::Arc;
 fn main() {
     let mut world: HittableList = HittableList::default();
 
-    let material_ground = Arc::new(Lambertian::new(0.5, 0.5, 0.5));
+    let checker_texture = CheckerTexture::from_colors(
+        0.32,
+        Color::new(0.2, 0.3, 0.1),
+        Color::new(0.9, 0.9, 0.9)
+    );
+    let material_ground = Arc::new(Lambertian::from_texture(Arc::new(checker_texture)));
     world.push(Box::new(Sphere::new(Point3::new(0.0, -1000.0, -1.0), 1000.0, material_ground)));
 
     let mut rng = rand::thread_rng();
 
-    for a in -21..21 {
-        for b in -21..21 {
+    for a in -11..11 {
+        for b in -11..11 {
             let choose_mat = random_real(&mut rng);
             let center = Point3::new(
                 (a as f64) + 0.9 * random_real(&mut rng),
@@ -66,7 +72,7 @@ fn main() {
 
     let cam = Camera::new(16.0 / 9.0, 400,
             100, 50, 20.0,
-            Point3::new(-13.0, 2.0, 3.0),
+            Point3::new(13.0, 2.0, 3.0),
             Point3::new(0.0, 0.0, 0.0),
             Vec3::new(0.0, 1.0, 0.0),
             0.6, 10.0);

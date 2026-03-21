@@ -51,8 +51,8 @@ impl Camera {
         let center = lookfrom;
 
         let w = (lookfrom - lookat).unit();
-        let u = Vec3::cross(&w, &vup).unit();
-        let v = Vec3::cross(&u, &w);
+        let u = Vec3::cross(&vup, &w).unit();
+        let v = Vec3::cross(&w, &u);
 
         let viewport_u = viewport_width * u;
         let viewport_v = viewport_height * -v;
@@ -114,7 +114,7 @@ impl Camera {
     }
 
     fn sample_square(rng: &mut dyn RngCore) -> Vec3 {
-        Vec3::new(random_real(rng) + 0.5, random_real(rng) + 0.5, 0.0)
+        Vec3::new(random_real(rng) - 0.5, random_real(rng) - 0.5, 0.0)
     }
 
     fn sample_defocus_disk(&self, rng: &mut dyn RngCore) -> Vec3 {
@@ -122,7 +122,7 @@ impl Camera {
         self.center + (p.x() * self.defocus_disk_u) + (p.y() * self.defocus_disk_v)
     }
 
-    fn get_ray(&self, i: i32, j: i32, tm: f64, rng: &mut dyn RngCore) -> Ray {
+    fn get_ray(&self, i: i32, j: i32, rng: &mut dyn RngCore) -> Ray {
         let offset = Self::sample_square(rng);
         let pixel_sample = self.pixel00_loc
             + self.pixel_delta_u * (i as f64 + offset.x())
@@ -131,7 +131,7 @@ impl Camera {
         let ray_origin = if self.defocus_angle <= 0.0 { self.center } else { self.sample_defocus_disk(rng) };
         let ray_direction = pixel_sample - ray_origin;
 
-        Ray::new(ray_origin, ray_direction, tm)
+        Ray::new(ray_origin, ray_direction, random_real(rng))
     }
 
     pub fn render(&self, world: &dyn Hittable) {
@@ -154,7 +154,7 @@ impl Camera {
                 let mut rng = rand::thread_rng();
                 let mut pixel_color = Color::new(0.0, 0.0, 0.0);
                 for _ in 0..self.samples_per_pixel {
-                    let ray = self.get_ray(i, j, 0.0, &mut rng);
+                    let ray = self.get_ray(i, j, &mut rng);
                     pixel_color += self.ray_color(&ray, world, &mut rng, 0);
                 }
                 pixel_color *= self.pixel_sample_scale;

@@ -69,7 +69,9 @@ impl Hittable for Triangle {
             normal: outward_normal,
             mat: self.mat.clone(),
             p: recordp,
-            front_face: true
+            front_face: true,
+            u: 0.0,
+            v: 0.0
         };
 
         record.set_face_normal(r, &outward_normal);

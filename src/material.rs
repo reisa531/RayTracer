@@ -1,17 +1,20 @@
 use crate::Ray;
 use crate::HitRecord;
 use crate::Color;
+use crate::SolidColor;
 use crate::Vec3;
+use crate::texture::Texture;
 use crate::utils::random_real;
 
 use rand::RngCore;
+use std::sync::Arc;
 
 pub trait Material: Send + Sync {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord, rng: &mut dyn RngCore) -> Option<(Color, Ray)>;
 }
 
 pub struct Lambertian {
-    albedo: Color
+    tex: Arc<dyn Texture>
 }
 
 pub struct Metal {
@@ -26,13 +29,19 @@ pub struct Dielectric {
 impl Lambertian {
     pub fn new(albedo_r: f64, albedo_g: f64, albedo_b: f64) -> Self {
         Self {
-            albedo: Color::new(albedo_r, albedo_g, albedo_b)
+            tex: Arc::new(SolidColor::new(Color::new(albedo_r, albedo_g, albedo_b)))
         }
     }
 
     pub fn from_color(albedo: Color) -> Self {
         Self {
-            albedo
+            tex: Arc::new(SolidColor::new(albedo))
+        }
+    }
+
+    pub fn from_texture(texture: Arc<dyn Texture>) -> Self {
+        Self {
+            tex: texture.clone()
         }
     }
 }
@@ -42,10 +51,10 @@ impl Material for Lambertian {
         let scatter_direction = rec.normal + Vec3::random_unit(rng);
 
         if scatter_direction.near_zero() {
-            return Some((self.albedo, Ray::new(rec.p, rec.normal, r_in.time())));
+            return Some((self.tex.color_at(rec.u, rec.v, &rec.p), Ray::new(rec.p, rec.normal, r_in.time())));
         }
 
-        Some((self.albedo, Ray::new(rec.p, scatter_direction, r_in.time())))
+        Some((self.tex.color_at(rec.u, rec.v, &rec.p), Ray::new(rec.p, scatter_direction, r_in.time())))
     }
 }
 

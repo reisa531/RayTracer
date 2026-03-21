@@ -10,6 +10,7 @@ pub mod camera;
 pub mod material;
 pub mod aabb;
 pub mod bvh;
+pub mod texture;
 pub mod utils;
 
 pub use vec3::Vec3;
@@ -28,3 +29,5 @@ pub use material::Metal;
 pub use material::Dielectric;
 pub use aabb::AABB;
 pub use bvh::BVHNode;
+pub use texture::SolidColor;
+pub use texture::CheckerTexture;
