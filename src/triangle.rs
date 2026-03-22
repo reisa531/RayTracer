@@ -24,7 +24,7 @@ impl Triangle {
             a,
             e1: b - a,
             e2: c - a,
-            normal: Vec3::cross(&(b - a), &(c - a)),
+            normal: Vec3::cross(&(b - a), &(c - a)).unit(),
             mat,
             bbox: AABB::from_triangle(a, b, c)
         }
@@ -70,8 +70,8 @@ impl Hittable for Triangle {
             mat: self.mat.clone(),
             p: recordp,
             front_face: true,
-            u: 0.0,
-            v: 0.0
+            u,
+            v
         };
 
         record.set_face_normal(r, &outward_normal);

@@ -1,4 +1,5 @@
 use raytracer::CheckerTexture;
+use raytracer::Quad;
 use raytracer::Vec3;
 use raytracer::Color;
 use raytracer::Dielectric;
@@ -145,14 +146,72 @@ fn perlin_spheres() {
     cam.render(&world);
 }
 
+fn quads() {
+    let mut world: HittableList = HittableList::default();
+
+    let left_red = Arc::new(Lambertian::new(1.0, 0.2, 0.2));
+    let back_green = Arc::new(Lambertian::new(0.2, 1.0, 0.2));
+    let right_blue = Arc::new(Lambertian::new(0.2, 0.2, 1.0));
+    let upper_orange = Arc::new(Lambertian::new(1.0, 0.5, 0.0));
+    let lower_teal = Arc::new(Lambertian::new(0.2, 0.8, 0.8));
+
+    world.push(Box::new(Quad::new(
+        Point3::new(-3.0, -2.0, 5.0),
+        Vec3::new(0.0, 0.0, -4.0),
+        Vec3::new(0.0, 4.0, 0.0),
+        left_red
+    )));
+
+    world.push(Box::new(Quad::new(
+        Point3::new(-2.0, -2.0, 0.0),
+        Vec3::new(4.0, 0.0, 0.0),
+        Vec3::new(0.0, 4.0, 0.0),
+        back_green
+    )));
+
+    world.push(Box::new(Quad::new(
+        Point3::new(3.0, -2.0, 1.0),
+        Vec3::new(0.0, 0.0, 4.0),
+        Vec3::new(0.0, 4.0, 0.0),
+        right_blue
+    )));
+
+    world.push(Box::new(Quad::new(
+        Point3::new(-2.0, 3.0, 1.0),
+        Vec3::new(4.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, 4.0),
+        upper_orange
+    )));
+
+    world.push(Box::new(Quad::new(
+        Point3::new(-2.0, -3.0, 5.0),
+        Vec3::new(4.0, 0.0, 0.0),
+        Vec3::new(0.0, 0.0, -4.0),
+        lower_teal
+    )));
+
+    let cam = Camera::new(1.0, 400, 100,
+            50, 80.0,
+            Point3::new(0.0, 0.0, 9.0),
+            Point3::new(0.0, 0.0, 0.0),
+            Vec3::new(0.0, 1.0, 0.0),
+            0.0, 9.0);
+
+    let mut rng = rand::thread_rng();
+    let world = HittableList::to_bvh(world, &mut rng);
+
+    cam.render(&world);
+}
+
 fn main() {
-    let scenario = 4;
+    let scenario = 5;
 
     match scenario {
         1 => bouncing_spheres(),
         2 => checkered_spheres(),
         3 => earth(),
         4 => perlin_spheres(),
+        5 => quads(),
         _ => eprintln!("Invalid!")
     }
 }

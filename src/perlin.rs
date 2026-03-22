@@ -6,7 +6,7 @@ pub use crate::vec3::Point3;
 pub use crate::utils;
 
 pub struct Perlin {
-    randfloat: [f64; 256],
+    // randfloat: [f64; 256],
     randvec: [Vec3; 256],
     perm_x: [i32; 256],
     perm_y: [i32; 256],
@@ -58,7 +58,7 @@ impl Perlin {
         Self::perlin_generate_perm(&mut perm_z);
 
         Self {
-            randfloat,
+            // randfloat,
             randvec,
             perm_x,
             perm_y,

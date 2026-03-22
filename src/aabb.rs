@@ -47,7 +47,36 @@ impl AABB {
         let mut y = Interval::new(ymin, ymax);
         let mut z = Interval::new(zmin, zmax);
 
-        let min_axis_size = 1e-8;
+        let min_axis_size = 1e-6;
+        if x.size() < min_axis_size { x = x.expand(min_axis_size); }
+        if y.size() < min_axis_size { y = y.expand(min_axis_size); }
+        if z.size() < min_axis_size { z = z.expand(min_axis_size); }
+
+        Self {
+            x,
+            y,
+            z
+        }
+    }
+
+    pub fn from_quad(q: Point3, u: Vec3, v: Vec3) -> Self {
+        let a = q;
+        let b = q + u;
+        let c = q + v;
+        let d = b + v;
+        
+        let xmin = a.x().min(b.x()).min(c.x()).min(d.x());
+        let xmax = a.x().max(b.x()).max(c.x()).max(d.x());
+        let ymin = a.y().min(b.y()).min(c.y()).min(d.y());
+        let ymax = a.y().max(b.y()).max(c.y()).max(d.y());
+        let zmin = a.z().min(b.z()).min(c.z()).min(d.z());
+        let zmax = a.z().max(b.z()).max(c.z()).max(d.z());
+
+        let mut x = Interval::new(xmin, xmax);
+        let mut y = Interval::new(ymin, ymax);
+        let mut z = Interval::new(zmin, zmax);
+
+        let min_axis_size = 1e-6;
         if x.size() < min_axis_size { x = x.expand(min_axis_size); }
         if y.size() < min_axis_size { y = y.expand(min_axis_size); }
         if z.size() < min_axis_size { z = z.expand(min_axis_size); }

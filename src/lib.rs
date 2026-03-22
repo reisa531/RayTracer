@@ -13,6 +13,7 @@ pub mod bvh;
 pub mod texture;
 pub mod image_parser;
 pub mod perlin;
+pub mod quad;
 pub mod utils;
 
 pub use vec3::Vec3;
@@ -34,3 +35,4 @@ pub use bvh::BVHNode;
 pub use texture::SolidColor;
 pub use texture::CheckerTexture;
 pub use perlin::Perlin;
+pub use quad::Quad;
