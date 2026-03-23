@@ -2,6 +2,7 @@ use crate::vec3::Vec3;
 use crate::vec3::Point3;
 use crate::hittable::HitRecord;
 use crate::hittable::Hittable;
+use crate::hittable_list::HittableList;
 use crate::ray::Ray;
 use crate::interval::Interval;
 use crate::material::Material;
@@ -89,4 +90,24 @@ impl Hittable for Quad {
     fn bounding_box(&self) -> AABB {
         self.bbox.clone()
     }
+}
+
+pub fn cuboid(a: Point3, b: Point3, mat: Arc<dyn Material>) -> HittableList {
+    let mut sides = HittableList::default();
+
+    let min = Point3::new(a.x().min(b.x()), a.y().min(b.y()), a.z().min(b.z()));
+    let max = Point3::new(a.x().max(b.x()), a.y().max(b.y()), a.z().max(b.z()));
+
+    let dx = Vec3::new(max.x() - min.x(), 0.0, 0.0);
+    let dy = Vec3::new(0.0, max.y() - min.y(), 0.0);
+    let dz = Vec3::new(0.0, 0.0, max.z() - min.z());
+
+    sides.push(Box::new(Quad::new(min, dx, dy, mat.clone())));
+    sides.push(Box::new(Quad::new(min, dx, dz, mat.clone())));
+    sides.push(Box::new(Quad::new(min, dy, dz, mat.clone())));
+    sides.push(Box::new(Quad::new(max, -dx, -dy, mat.clone())));
+    sides.push(Box::new(Quad::new(max, -dx, -dz, mat.clone())));
+    sides.push(Box::new(Quad::new(max, -dy, -dz, mat.clone())));
+
+    sides
 }

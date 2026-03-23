@@ -10,6 +10,7 @@ use raytracer::Camera;
 use raytracer::Lambertian;
 use raytracer::Metal;
 use raytracer::material::DiffuseLight;
+use raytracer::quad::cuboid;
 use raytracer::texture::ImageTexture;
 use raytracer::texture::NoiseTexture;
 use raytracer::utils::random_real;
@@ -217,6 +218,7 @@ fn simple_light() {
     world.push(Box::new(Sphere::new(Point3::new(0.0, 2.0, 0.0), 2.0, Arc::new(Lambertian::from_texture(pertext)))));
 
     let difflight = Arc::new(DiffuseLight::new(4.0, 4.0, 4.0));
+    world.push(Box::new(Sphere::new(Point3::new(0.0, 7.0, 0.0), 2.0, difflight.clone())));
     world.push(Box::new(Quad::new(
         Vec3::new(3.0, 1.0, -2.0),
         Vec3::new(2.0, 0.0, 0.0),
@@ -235,8 +237,46 @@ fn simple_light() {
     cam.render(&world);
 }
 
+fn cornell_box() {
+    let mut world: HittableList = HittableList::default();
+
+    let red   = Arc::new(Lambertian::new(0.65, 0.05, 0.05));
+    let white = Arc::new(Lambertian::new(0.73, 0.73, 0.73));
+    let green = Arc::new(Lambertian::new(0.12, 0.45, 0.15));
+    let light = Arc::new(DiffuseLight::new(15.0, 15.0, 15.0));
+
+    world.push(Box::new(Quad::new(Point3::new(555.0, 0.0, 0.0), Vec3::new(0.0, 555.0, 0.0), Vec3::new(0.0, 0.0, 555.0), green.clone())));
+    world.push(Box::new(Quad::new(Point3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 555.0, 0.0), Vec3::new(0.0, 0.0, 555.0), red.clone())));
+    world.push(Box::new(Quad::new(Point3::new(343.0, 554.0, 332.0), Vec3::new(-130.0, 0.0, 0.0), Vec3::new(0.0, 0.0, -105.0), light.clone())));
+    world.push(Box::new(Quad::new(Point3::new(0.0, 0.0, 0.0), Vec3::new(555.0, 0.0, 0.0), Vec3::new(0.0, 0.0, 555.0), white.clone())));
+    world.push(Box::new(Quad::new(Point3::new(555.0, 555.0, 555.0), Vec3::new(-555.0, 0.0, 0.0), Vec3::new(0.0, 0.0, -555.0), white.clone())));
+    world.push(Box::new(Quad::new(Point3::new(0.0, 0.0, 555.0), Vec3::new(555.0, 0.0, 0.0), Vec3::new(0.0, 555.0, 0.0), white.clone())));
+
+    world.push(Box::new(cuboid(
+        Point3::new(130.0, 0.0, 65.0),
+        Point3::new(295.0, 165.0, 230.0),
+        white.clone()
+    )));
+
+    world.push(Box::new(cuboid(
+        Point3::new(265.0, 0.0, 295.0),
+        Point3::new(430.0, 330.0, 460.0),
+        white.clone()
+    )));
+
+    let cam = Camera::new(1.0, 600,
+            200, 50, 40.0,
+            Point3::new(278.0, 278.0, -800.0),
+            Point3::new(278.0, 278.0, 0.0),
+            Vec3::new(0.0, 1.0, 0.0),
+            0.0, 10.0,
+            Color::new(0.0, 0.0, 0.0));
+
+    cam.render(&world);
+}
+
 fn main() {
-    let scenario = 6;
+    let scenario = 7;
 
     match scenario {
         1 => bouncing_spheres(),
@@ -245,6 +285,7 @@ fn main() {
         4 => perlin_spheres(),
         5 => quads(),
         6 => simple_light(),
+        7 => cornell_box(),
         _ => eprintln!("Invalid!")
     }
 }
