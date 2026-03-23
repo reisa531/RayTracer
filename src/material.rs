@@ -3,6 +3,7 @@ use crate::HitRecord;
 use crate::Color;
 use crate::SolidColor;
 use crate::Vec3;
+use crate::Point3;
 use crate::texture::Texture;
 use crate::utils::random_real;
 
@@ -11,6 +12,8 @@ use std::sync::Arc;
 
 pub trait Material: Send + Sync {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord, rng: &mut dyn RngCore) -> Option<(Color, Ray)>;
+
+    fn emitted(&self, u: f64, v: f64, p: &Point3) -> Color;
 }
 
 pub struct Lambertian {
@@ -24,6 +27,10 @@ pub struct Metal {
 
 pub struct Dielectric {
     refractive_index: f64
+}
+
+pub struct DiffuseLight {
+    tex: Arc<dyn Texture>
 }
 
 impl Lambertian {
@@ -56,6 +63,10 @@ impl Material for Lambertian {
 
         Some((self.tex.color_at(rec.u, rec.v, &rec.p), Ray::new(rec.p, scatter_direction, r_in.time())))
     }
+
+    fn emitted(&self, _u: f64, _v: f64, _p: &Point3) -> Color {
+        Color::new(0.0, 0.0, 0.0)
+    }
 }
 
 impl Metal {
@@ -85,6 +96,10 @@ impl Material for Metal {
         }
 
         Some((self.albedo, scattered))
+    }
+
+    fn emitted(&self, _u: f64, _v: f64, _p: &Point3) -> Color {
+        Color::new(0.0, 0.0, 0.0)
     }
 }
 
@@ -118,5 +133,39 @@ impl Material for Dielectric {
         };
 
         Some((Color::new(1.0, 1.0, 1.0), Ray::new(rec.p, direction, r_in.time())))
+    }
+
+    fn emitted(&self, _u: f64, _v: f64, _p: &Point3) -> Color {
+        Color::new(0.0, 0.0, 0.0)
+    }
+}
+
+impl DiffuseLight {
+    pub fn new(albedo_r: f64, albedo_g: f64, albedo_b: f64) -> Self {
+        Self {
+            tex: Arc::new(SolidColor::new(Color::new(albedo_r, albedo_g, albedo_b)))
+        }
+    }
+
+    pub fn from_color(albedo: Color) -> Self {
+        Self {
+            tex: Arc::new(SolidColor::new(albedo))
+        }
+    }
+
+    pub fn from_texture(texture: Arc<dyn Texture>) -> Self {
+        Self {
+            tex: texture.clone()
+        }
+    }
+}
+
+impl Material for DiffuseLight {
+    fn scatter(&self, _r_in: &Ray, _rec: &HitRecord, _rng: &mut dyn RngCore) -> Option<(Color, Ray)> {
+        None
+    }
+
+    fn emitted(&self, u: f64, v: f64, p: &Point3) -> Color {
+        self.tex.color_at(u, v, p)
     }
 }

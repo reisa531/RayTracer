@@ -170,7 +170,8 @@ fn main() {
             Point3::new(-13.0, 2.0, 3.0),
             Point3::new(0.0, 0.0, 0.0),
             Vec3::new(0.0, 1.0, 0.0),
-            0.6, 10.0);
+            0.6, 10.0,
+            Color::new(0.70, 0.80, 1.00));
     
     let world = HittableList::to_bvh(world, &mut rng);
     

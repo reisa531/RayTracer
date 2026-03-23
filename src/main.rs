@@ -9,6 +9,7 @@ use raytracer::HittableList;
 use raytracer::Camera;
 use raytracer::Lambertian;
 use raytracer::Metal;
+use raytracer::material::DiffuseLight;
 use raytracer::texture::ImageTexture;
 use raytracer::texture::NoiseTexture;
 use raytracer::utils::random_real;
@@ -78,7 +79,8 @@ fn bouncing_spheres() {
             Point3::new(13.0, 2.0, 3.0),
             Point3::new(0.0, 0.0, 0.0),
             Vec3::new(0.0, 1.0, 0.0),
-            0.6, 10.0);
+            0.6, 10.0,
+            Color::new(0.70, 0.80, 1.00));
     
     let world = HittableList::to_bvh(world, &mut rng);
     
@@ -104,7 +106,8 @@ fn checkered_spheres() {
             Point3::new(13.0, 2.0, 3.0),
             Point3::new(0.0, 0.0, 0.0),
             Vec3::new(0.0, 1.0, 0.0),
-            0.6, 10.0);
+            0.6, 10.0,
+            Color::new(0.70, 0.80, 1.00));
     
     let world = HittableList::to_bvh(world, &mut rng);
     
@@ -121,7 +124,8 @@ fn earth() {
             Point3::new(0.0, 0.0, -12.0),
             Point3::new(0.0, 0.0, 0.0),
             Vec3::new(0.0, 1.0, 0.0),
-            0.0, 10.0);
+            0.0, 10.0,
+            Color::new(0.70, 0.80, 1.00));
 
     let mut world = HittableList::default();
     world.push(Box::new(globe));
@@ -141,7 +145,8 @@ fn perlin_spheres() {
             Point3::new(13.0, 2.0, 3.0),
             Point3::new(0.0, 0.0, 0.0),
             Vec3::new(0.0, 1.0, 0.0),
-            0.0, 10.0);
+            0.0, 10.0,
+            Color::new(0.70, 0.80, 1.00));
 
     cam.render(&world);
 }
@@ -195,7 +200,8 @@ fn quads() {
             Point3::new(0.0, 0.0, 9.0),
             Point3::new(0.0, 0.0, 0.0),
             Vec3::new(0.0, 1.0, 0.0),
-            0.0, 9.0);
+            0.0, 9.0,
+            Color::new(0.70, 0.80, 1.00));
 
     let mut rng = rand::thread_rng();
     let world = HittableList::to_bvh(world, &mut rng);
@@ -203,8 +209,34 @@ fn quads() {
     cam.render(&world);
 }
 
+fn simple_light() {
+    let mut world: HittableList = HittableList::default();
+
+    let pertext = Arc::new(NoiseTexture::new(4.0));
+    world.push(Box::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, Arc::new(Lambertian::from_texture(pertext.clone())))));
+    world.push(Box::new(Sphere::new(Point3::new(0.0, 2.0, 0.0), 2.0, Arc::new(Lambertian::from_texture(pertext)))));
+
+    let difflight = Arc::new(DiffuseLight::new(4.0, 4.0, 4.0));
+    world.push(Box::new(Quad::new(
+        Vec3::new(3.0, 1.0, -2.0),
+        Vec3::new(2.0, 0.0, 0.0),
+        Vec3::new(0.0, 2.0, 0.0),
+        difflight)
+    ));
+
+    let cam = Camera::new(16.0 / 9.0, 400,
+            100, 50, 20.0,
+            Point3::new(26.0, 3.0, 6.0),
+            Point3::new(0.0, 2.0, 0.0),
+            Vec3::new(0.0, 1.0, 0.0),
+            0.0, 10.0,
+            Color::new(0.0, 0.0, 0.0));
+
+    cam.render(&world);
+}
+
 fn main() {
-    let scenario = 5;
+    let scenario = 6;
 
     match scenario {
         1 => bouncing_spheres(),
@@ -212,6 +244,7 @@ fn main() {
         3 => earth(),
         4 => perlin_spheres(),
         5 => quads(),
+        6 => simple_light(),
         _ => eprintln!("Invalid!")
     }
 }

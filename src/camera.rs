@@ -34,12 +34,13 @@ pub struct Camera {
     // w: Vec3,
     defocus_disk_u: Vec3,
     defocus_disk_v: Vec3,
+    background: Color
 }
 
 impl Camera {
     pub fn new(aspect_ratio: f64, image_width: i32, samples_per_pixel: i32, max_depth: i32,
             vfov: f64, lookfrom: Point3, lookat: Point3, vup: Vec3,
-            defocus_angle: f64, focus_dist: f64) -> Self {
+            defocus_angle: f64, focus_dist: f64, background: Color) -> Self {
         let image_height: i32 = ((image_width as f64) / aspect_ratio).max(1.0) as i32;
 
         let pixel_sample_scale = 1.0 / (samples_per_pixel as f64);
@@ -91,6 +92,7 @@ impl Camera {
             // w,
             defocus_disk_u,
             defocus_disk_v,
+            background
         }
     }
 
@@ -100,17 +102,33 @@ impl Camera {
         }
 
         if let Some(rec) = world.hit(r, Interval::PSEUDO_POSITIVE) {
-            if let Some((attenuation, scattered)) = rec.mat.scatter(r, &rec, rng) {
-                return attenuation.hadamard_product(self.ray_color(&scattered, world, rng, dep + 1));
-            }
+            let color_from_emission = rec.mat.emitted(rec.u, rec.v, &rec.p);
 
-            return Color::new(0.0, 0.0, 0.0);
+            if let Some((attenuation, scattered)) = rec.mat.scatter(r, &rec, rng) {
+                let color_from_scatter = attenuation.hadamard_product(self.ray_color(&scattered, world, rng, dep + 1));
+                
+                color_from_emission + color_from_scatter
+            }
+            else {
+                color_from_emission
+            }
+        }
+        else {
+            self.background
         }
 
-        let unit_ray = r.direction().unit();
-        let a = 0.5 * (unit_ray.y() + 1.0);
+        // if let Some(rec) = world.hit(r, Interval::PSEUDO_POSITIVE) {
+        //     if let Some((attenuation, scattered)) = rec.mat.scatter(r, &rec, rng) {
+        //         return attenuation.hadamard_product(self.ray_color(&scattered, world, rng, dep + 1));
+        //     }
 
-        Color::new(1.0, 1.0, 1.0) * (1.0 - a) + Color::new(0.5, 0.7, 1.0) * a
+        //     return Color::new(0.0, 0.0, 0.0);
+        // }
+
+        // let unit_ray = r.direction().unit();
+        // let a = 0.5 * (unit_ray.y() + 1.0);
+
+        // Color::new(1.0, 1.0, 1.0) * (1.0 - a) + Color::new(0.5, 0.7, 1.0) * a
     }
 
     fn sample_square(rng: &mut dyn RngCore) -> Vec3 {

@@ -1,6 +1,7 @@
 use raytracer::Vec3;
 use raytracer::Dielectric;
 use raytracer::Point3;
+use raytracer::Color;
 use raytracer::Sphere;
 use raytracer::HittableList;
 use raytracer::Camera;
@@ -29,7 +30,8 @@ fn main() {
             Point3::new(-2.0, 2.0, 1.0),
             Point3::new(0.0, 0.0, -1.0),
             Vec3::new(0.0, 1.0, 0.0),
-            10.0, 3.4);
+            10.0, 3.4,
+            Color::new(0.70, 0.80, 1.00));
 
     cam.render(&world);
 }
