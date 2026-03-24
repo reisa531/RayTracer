@@ -36,3 +36,5 @@ pub use texture::SolidColor;
 pub use texture::CheckerTexture;
 pub use perlin::Perlin;
 pub use quad::Quad;
+pub use hittable::Translate;
+pub use hittable::RotateY;

@@ -13,6 +13,8 @@ use raytracer::material::DiffuseLight;
 use raytracer::quad::cuboid;
 use raytracer::texture::ImageTexture;
 use raytracer::texture::NoiseTexture;
+use raytracer::hittable::RotateY;
+use raytracer::hittable::Translate;
 use raytracer::utils::random_real;
 use raytracer::utils::random_real_interval;
 
@@ -252,17 +254,20 @@ fn cornell_box() {
     world.push(Box::new(Quad::new(Point3::new(555.0, 555.0, 555.0), Vec3::new(-555.0, 0.0, 0.0), Vec3::new(0.0, 0.0, -555.0), white.clone())));
     world.push(Box::new(Quad::new(Point3::new(0.0, 0.0, 555.0), Vec3::new(555.0, 0.0, 0.0), Vec3::new(0.0, 555.0, 0.0), white.clone())));
 
-    world.push(Box::new(cuboid(
-        Point3::new(130.0, 0.0, 65.0),
-        Point3::new(295.0, 165.0, 230.0),
+    let box1 = Box::new(Translate::new(Arc::new(RotateY::new(Arc::new(cuboid(
+        Point3::new(0.0, 0.0, 0.0),
+        Point3::new(165.0, 330.0, 165.0),
         white.clone()
-    )));
+    )), 15.0)), Vec3::new(265.0, 0.0, 295.0)));
 
-    world.push(Box::new(cuboid(
-        Point3::new(265.0, 0.0, 295.0),
-        Point3::new(430.0, 330.0, 460.0),
+    let box2 = Box::new(Translate::new(Arc::new(RotateY::new(Arc::new(cuboid(
+        Point3::new(0.0, 0.0, 0.0),
+        Point3::new(165.0, 165.0, 165.0),
         white.clone()
-    )));
+    )), -18.0)), Vec3::new(130.0, 0.0, 65.0)));
+
+    world.push(box1);
+    world.push(box2);
 
     let cam = Camera::new(1.0, 600,
             200, 50, 40.0,
