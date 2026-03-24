@@ -33,6 +33,10 @@ pub struct DiffuseLight {
     tex: Arc<dyn Texture>
 }
 
+pub struct Isotropic {
+    tex: Arc<dyn Texture>
+}
+
 impl Lambertian {
     pub fn new(albedo_r: f64, albedo_g: f64, albedo_b: f64) -> Self {
         Self {
@@ -167,5 +171,38 @@ impl Material for DiffuseLight {
 
     fn emitted(&self, u: f64, v: f64, p: &Point3) -> Color {
         self.tex.color_at(u, v, p)
+    }
+}
+
+impl Isotropic {
+    pub fn new(albedo_r: f64, albedo_g: f64, albedo_b: f64) -> Self {
+        Self {
+            tex: Arc::new(SolidColor::new(Color::new(albedo_r, albedo_g, albedo_b)))
+        }
+    }
+
+    pub fn from_color(albedo: Color) -> Self {
+        Self {
+            tex: Arc::new(SolidColor::new(albedo))
+        }
+    }
+
+    pub fn from_texture(texture: Arc<dyn Texture>) -> Self {
+        Self {
+            tex: texture.clone()
+        }
+    }
+}
+
+impl Material for Isotropic {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord, rng: &mut dyn RngCore) -> Option<(Color, Ray)> {
+        let scattered = Ray::new(rec.p, Vec3::random_unit(rng), r_in.time());
+        let attenuation = self.tex.color_at(rec.u, rec.v, &rec.p);
+
+        Some((attenuation, scattered))
+    }
+
+    fn emitted(&self, _u: f64, _v: f64, _p: &Point3) -> Color {
+        Color::new(0.0, 0.0, 0.0)
     }
 }

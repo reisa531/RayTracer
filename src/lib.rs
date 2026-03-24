@@ -14,6 +14,7 @@ pub mod texture;
 pub mod image_parser;
 pub mod perlin;
 pub mod quad;
+pub mod constant_medium;
 pub mod utils;
 
 pub use vec3::Vec3;

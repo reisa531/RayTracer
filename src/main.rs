@@ -9,6 +9,7 @@ use raytracer::HittableList;
 use raytracer::Camera;
 use raytracer::Lambertian;
 use raytracer::Metal;
+use raytracer::constant_medium::ConstantMedium;
 use raytracer::material::DiffuseLight;
 use raytracer::quad::cuboid;
 use raytracer::texture::ImageTexture;
@@ -280,8 +281,49 @@ fn cornell_box() {
     cam.render(&world);
 }
 
+fn cornell_smoke() {
+    let mut world: HittableList = HittableList::default();
+
+    let red   = Arc::new(Lambertian::new(0.65, 0.05, 0.05));
+    let white = Arc::new(Lambertian::new(0.73, 0.73, 0.73));
+    let green = Arc::new(Lambertian::new(0.12, 0.45, 0.15));
+    let light = Arc::new(DiffuseLight::new(7.0, 7.0, 7.0));
+
+    world.push(Box::new(Quad::new(Point3::new(555.0, 0.0, 0.0), Vec3::new(0.0, 555.0, 0.0), Vec3::new(0.0, 0.0, 555.0), green.clone())));
+    world.push(Box::new(Quad::new(Point3::new(0.0, 0.0, 0.0), Vec3::new(0.0, 555.0, 0.0), Vec3::new(0.0, 0.0, 555.0), red.clone())));
+    world.push(Box::new(Quad::new(Point3::new(113.0, 554.0, 127.0), Vec3::new(330.0, 0.0, 0.0), Vec3::new(0.0, 0.0, 305.0), light.clone())));
+    world.push(Box::new(Quad::new(Point3::new(0.0, 0.0, 0.0), Vec3::new(555.0, 0.0, 0.0), Vec3::new(0.0, 0.0, 555.0), white.clone())));
+    world.push(Box::new(Quad::new(Point3::new(555.0, 555.0, 555.0), Vec3::new(-555.0, 0.0, 0.0), Vec3::new(0.0, 0.0, -555.0), white.clone())));
+    world.push(Box::new(Quad::new(Point3::new(0.0, 0.0, 555.0), Vec3::new(555.0, 0.0, 0.0), Vec3::new(0.0, 555.0, 0.0), white.clone())));
+
+    let box1 = Arc::new(Translate::new(Arc::new(RotateY::new(Arc::new(cuboid(
+        Point3::new(0.0, 0.0, 0.0),
+        Point3::new(165.0, 330.0, 165.0),
+        white.clone()
+    )), 15.0)), Vec3::new(265.0, 0.0, 295.0)));
+
+    let box2 = Arc::new(Translate::new(Arc::new(RotateY::new(Arc::new(cuboid(
+        Point3::new(0.0, 0.0, 0.0),
+        Point3::new(165.0, 165.0, 165.0),
+        white.clone()
+    )), -18.0)), Vec3::new(130.0, 0.0, 65.0)));
+
+    world.push(Box::new(ConstantMedium::new(box1, 0.01, Color::new(0.0, 0.0, 0.0))));
+    world.push(Box::new(ConstantMedium::new(box2, 0.01, Color::new(1.0, 1.0, 1.0))));
+
+    let cam = Camera::new(1.0, 600,
+            200, 50, 40.0,
+            Point3::new(278.0, 278.0, -800.0),
+            Point3::new(278.0, 278.0, 0.0),
+            Vec3::new(0.0, 1.0, 0.0),
+            0.0, 10.0,
+            Color::new(0.0, 0.0, 0.0));
+
+    cam.render(&world);
+}
+
 fn main() {
-    let scenario = 7;
+    let scenario = 8;
 
     match scenario {
         1 => bouncing_spheres(),
@@ -291,6 +333,7 @@ fn main() {
         5 => quads(),
         6 => simple_light(),
         7 => cornell_box(),
+        8 => cornell_smoke(),
         _ => eprintln!("Invalid!")
     }
 }
