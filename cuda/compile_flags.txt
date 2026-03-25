@@ -1,0 +1,5 @@
+-x
+cuda
+-std=c++17
+-Iinclude
+-Icuda/include

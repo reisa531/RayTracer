@@ -1,8 +1,11 @@
 /target
 /gpu
+*/build
+.vscode/
 .DS_Store
 *.in
 *.out
 *.err
 *.log
 time.txt
+.clangd
