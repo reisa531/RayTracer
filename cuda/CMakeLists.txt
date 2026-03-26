@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS OFF)
+
+if(POLICY CMP0146)
+	cmake_policy(SET CMP0146 OLD)
+endif()
 
 project(RayTracerCUDA LANGUAGES CXX CUDA)
 
@@ -19,3 +23,16 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/cuda)
 include_directories(include)
 
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-O3)
+
+enable_testing()
+
+add_executable(cuda_parser_smoke tests/cuda_parser_smoke.cu)
+target_include_directories(cuda_parser_smoke PRIVATE
+	${CUDA_INCLUDE_DIRS}
+	${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+add_test(
+	NAME cuda_parser_smoke_test
+	COMMAND cuda_parser_smoke ${CMAKE_CURRENT_SOURCE_DIR}/../ir/scenario_9.ir
+)

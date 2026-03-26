@@ -16,7 +16,7 @@ struct TextureList {
     Vec3 *color1;
     Vec3 *color2;
     Vec3 *color3;
-    // int *resourceId; // Placeholder for future GPU texture resources
+    int *resourceId;
     // Perlin *perlin; // Placeholder for future Perlin noise parameters
     TextureType *type;
 

@@ -6,6 +6,7 @@ use crate::interval::Interval;
 use crate::material::Material;
 use crate::aabb::AABB;
 
+use std::any::Any;
 use std::f64::INFINITY;
 use std::f64::NEG_INFINITY;
 use::std::sync::Arc;
@@ -53,9 +54,21 @@ impl Translate {
             bbox
         }
     }
+
+    pub fn object(&self) -> Arc<dyn Hittable> {
+        self.object.clone()
+    }
+
+    pub fn offset(&self) -> Vec3 {
+        self.offset
+    }
 }
 
 impl Hittable for Translate {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord> {
         let offset_r = Ray::new(*r.origin() - self.offset, *r.direction(), r.time());
 
@@ -111,9 +124,25 @@ impl RotateY {
             bbox
         }
     }
+
+    pub fn object(&self) -> Arc<dyn Hittable> {
+        self.object.clone()
+    }
+
+    pub fn sin_theta(&self) -> f64 {
+        self.sin_theta
+    }
+
+    pub fn cos_theta(&self) -> f64 {
+        self.cos_theta
+    }
 }
 
 impl Hittable for RotateY {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord> {
         let origin = Point3::new(
             self.cos_theta * r.origin().x() - self.sin_theta * r.origin().z(),
@@ -154,6 +183,8 @@ impl Hittable for RotateY {
 }
 
 pub trait Hittable: Send + Sync {
+    fn as_any(&self) -> &dyn Any;
+
     fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord>;
 
     fn bounding_box(&self) -> AABB;

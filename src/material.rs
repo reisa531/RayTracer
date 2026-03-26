@@ -8,9 +8,12 @@ use crate::texture::Texture;
 use crate::utils::random_real;
 
 use rand::RngCore;
+use std::any::Any;
 use std::sync::Arc;
 
 pub trait Material: Send + Sync {
+    fn as_any(&self) -> &dyn Any;
+
     fn scatter(&self, r_in: &Ray, rec: &HitRecord, rng: &mut dyn RngCore) -> Option<(Color, Ray)>;
 
     fn emitted(&self, u: f64, v: f64, p: &Point3) -> Color;
@@ -55,9 +58,17 @@ impl Lambertian {
             tex: texture.clone()
         }
     }
+
+    pub fn texture(&self) -> Arc<dyn Texture> {
+        self.tex.clone()
+    }
 }
 
 impl Material for Lambertian {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn scatter(&self, r_in: &Ray, rec: &HitRecord, rng: &mut dyn RngCore) -> Option<(Color, Ray)> {
         let scatter_direction = rec.normal + Vec3::random_unit(rng);
 
@@ -87,9 +98,21 @@ impl Metal {
             fuzz: fuzz.clamp(0.0, 1.0)
         }
     }
+
+    pub fn albedo(&self) -> Color {
+        self.albedo
+    }
+
+    pub fn fuzz(&self) -> f64 {
+        self.fuzz
+    }
 }
 
 impl Material for Metal {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn scatter(&self, r_in: &Ray, rec: &HitRecord, rng: &mut dyn RngCore) -> Option<(Color, Ray)> {
         let reflected = Vec3::reflect((*r_in.direction()).clone(), rec.normal.clone()).unit()
             + self.fuzz * Vec3::random_unit(rng);
@@ -119,9 +142,17 @@ impl Dielectric {
         let r0: f64 = r0_base * r0_base;
         r0 + (1.0 - r0) * (1.0 - cosine).powf(5.0)
     }
+
+    pub fn refractive_index(&self) -> f64 {
+        self.refractive_index
+    }
 }
 
 impl Material for Dielectric {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn scatter(&self, r_in: &Ray, rec: &HitRecord, rng: &mut dyn RngCore) -> Option<(Color, Ray)> {
         let ri: f64 = if rec.front_face { 1.0 / self.refractive_index } else { self.refractive_index };
 
@@ -162,9 +193,17 @@ impl DiffuseLight {
             tex: texture.clone()
         }
     }
+
+    pub fn texture(&self) -> Arc<dyn Texture> {
+        self.tex.clone()
+    }
 }
 
 impl Material for DiffuseLight {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn scatter(&self, _r_in: &Ray, _rec: &HitRecord, _rng: &mut dyn RngCore) -> Option<(Color, Ray)> {
         None
     }
@@ -192,9 +231,17 @@ impl Isotropic {
             tex: texture.clone()
         }
     }
+
+    pub fn texture(&self) -> Arc<dyn Texture> {
+        self.tex.clone()
+    }
 }
 
 impl Material for Isotropic {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn scatter(&self, r_in: &Ray, rec: &HitRecord, rng: &mut dyn RngCore) -> Option<(Color, Ray)> {
         let scattered = Ray::new(rec.p, Vec3::random_unit(rng), r_in.time());
         let attenuation = self.tex.color_at(rec.u, rec.v, &rec.p);

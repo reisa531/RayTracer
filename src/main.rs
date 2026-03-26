@@ -16,9 +16,11 @@ use raytracer::texture::ImageTexture;
 use raytracer::texture::NoiseTexture;
 use raytracer::hittable::RotateY;
 use raytracer::hittable::Translate;
+use raytracer::export_scenarios::{export_all_scene_ir, export_scene_ir};
 use raytracer::utils::random_real;
 use raytracer::utils::random_real_interval;
 
+use std::env;
 use std::sync::Arc;
 
 fn bouncing_spheres() {
@@ -437,7 +439,41 @@ fn final_scene() {
 }
 
 fn main() {
-    let scenario = 9;
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() >= 2 && args[1] == "--export-ir" {
+        if args.len() == 2 || args[2] == "all" {
+            match export_all_scene_ir("ir") {
+                Ok(paths) => {
+                    for path in paths {
+                        println!("exported {}", path);
+                    }
+                }
+                Err(err) => eprintln!("export all failed: {}", err),
+            }
+            return;
+        }
+
+        let scenario = match args[2].parse::<u32>() {
+            Ok(v) => v,
+            Err(_) => {
+                eprintln!("invalid scenario id: {}", args[2]);
+                return;
+            }
+        };
+        let path = format!("ir/scenario_{}.ir", scenario);
+        match export_scene_ir(scenario, &path) {
+            Ok(()) => println!("exported {}", path),
+            Err(err) => eprintln!("export failed: {}", err),
+        }
+        return;
+    }
+
+    let scenario = if args.len() >= 3 && args[1] == "--scenario" {
+        args[2].parse::<u32>().unwrap_or(9)
+    } else {
+        9
+    };
 
     match scenario {
         1 => bouncing_spheres(),
@@ -449,6 +485,6 @@ fn main() {
         7 => cornell_box(),
         8 => cornell_smoke(),
         9 => final_scene(),
-        _ => eprintln!("Invalid!")
+        _ => eprintln!("Invalid!"),
     }
 }

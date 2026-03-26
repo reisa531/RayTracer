@@ -9,7 +9,7 @@ struct BVH {
     int *left;
     int *right;
     AABB *bbox;
-    int *hittableIndex; // Only valid for leaf nodes, nullptr for internal
+    int *hittableIndex; // Only valid for leaf nodes, -1 for internal
     bool *isLeaf;
     HittableList *hittables;
 

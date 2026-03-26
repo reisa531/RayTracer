@@ -5,10 +5,13 @@ pub use crate::interval::Interval;
 pub use crate::image_parser;
 pub use crate::perlin::Perlin;
 
+use std::any::Any;
 pub use std::sync::Arc;
 pub use std::vec::Vec;
 
 pub trait Texture: Send + Sync {
+    fn as_any(&self) -> &dyn Any;
+
     fn color_at(&self, u: f64, v: f64, p: &Point3) -> Color;
 }
 
@@ -23,6 +26,7 @@ pub struct CheckerTexture {
 }
 
 pub struct ImageTexture {
+    path: String,
     image: (u32, u32, Vec<Color>)
 }
 
@@ -35,9 +39,17 @@ impl SolidColor {
     pub fn new(albedo: Color) -> Self {
         Self {albedo}
     }
+
+    pub fn albedo(&self) -> Color {
+        self.albedo
+    }
 }
 
 impl Texture for SolidColor {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn color_at(&self, _u: f64, _v: f64, _p: &Point3) -> Color {
         self.albedo
     }
@@ -59,9 +71,25 @@ impl CheckerTexture {
             even: Arc::new(SolidColor::new(even_color))
         }
     }
+
+    pub fn inv_scale(&self) -> f64 {
+        self.inv_scale
+    }
+
+    pub fn odd(&self) -> Arc<dyn Texture> {
+        self.odd.clone()
+    }
+
+    pub fn even(&self) -> Arc<dyn Texture> {
+        self.even.clone()
+    }
 }
 
 impl Texture for CheckerTexture {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn color_at(&self, u: f64, v: f64, p: &Point3) -> Color {
         let ix = (self.inv_scale * p.x()).floor() as i32;
         let iy = (self.inv_scale * p.y()).floor() as i32;
@@ -79,8 +107,13 @@ impl Texture for CheckerTexture {
 impl ImageTexture {
     pub fn new(path: &str) -> Self {
         Self {
+            path: path.to_string(),
             image: parse_image(path)
         }
+    }
+
+    pub fn path(&self) -> &str {
+        &self.path
     }
 
     pub fn width(&self) -> u32 {
@@ -103,6 +136,10 @@ impl ImageTexture {
 }
 
 impl Texture for ImageTexture {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn color_at(&self, u: f64, v: f64, _p: &Point3) -> Color {
         if self.width() == 0 || self.height() == 0 {
             return Color::new(0.0, 1.0, 1.0);
@@ -128,9 +165,17 @@ impl NoiseTexture {
             scale
         }
     }
+
+    pub fn scale(&self) -> f64 {
+        self.scale
+    }
 }
 
 impl Texture for NoiseTexture {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     fn color_at(&self, _u: f64, _v: f64, p: &Point3) -> Color {
         // let noise_point = self.scale * *p;
         // Color::new(1.0, 1.0, 1.0) * 0.5 * (1.0 + self.noise.noise(&noise_point))

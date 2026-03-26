@@ -82,9 +82,25 @@ impl BVHNode {
     pub fn new(mut objects: Vec<Arc<dyn Hittable>>, rng: &mut dyn RngCore) -> Self {
         Self::build(&mut objects, rng)
     }
+
+    pub fn left(&self) -> Arc<dyn Hittable> {
+        self.left.clone()
+    }
+
+    pub fn right(&self) -> Arc<dyn Hittable> {
+        self.right.clone()
+    }
+
+    pub fn bbox_ref(&self) -> &AABB {
+        &self.bbox
+    }
 }
 
 impl Hittable for BVHNode {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     fn hit(&self, r: &crate::Ray, ray_t: crate::Interval) -> Option<crate::HitRecord> {
         if !self.bbox.hit(r, ray_t) {
             return None;

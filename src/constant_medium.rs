@@ -35,9 +35,25 @@ impl ConstantMedium {
             phase_function: Arc::new(Isotropic::from_texture(tex))
         }
     }
+
+    pub fn boundary(&self) -> Arc<dyn Hittable> {
+        self.boundary.clone()
+    }
+
+    pub fn neg_inv_density(&self) -> f64 {
+        self.neg_inv_density
+    }
+
+    pub fn phase_function(&self) -> Arc<dyn Material> {
+        self.phase_function.clone()
+    }
 }
 
 impl Hittable for ConstantMedium {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord> {
         let mut rec1= self.boundary.hit(r, Interval::UNIVERSE)?;
         let mut rec2 = self.boundary.hit(r, Interval::new(rec1.t + 0.0001, INFINITY))?;

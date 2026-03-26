@@ -30,6 +30,10 @@ impl HittableList {
 }
 
 impl Hittable for HittableList {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord> {
         let mut closest_so_far = ray_t.max;
         let mut hit_record = None;

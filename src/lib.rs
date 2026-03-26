@@ -16,6 +16,8 @@ pub mod perlin;
 pub mod quad;
 pub mod constant_medium;
 pub mod utils;
+pub mod export_ir;
+pub mod export_scenarios;
 
 pub use vec3::Vec3;
 pub use vec3::Point3;

@@ -29,9 +29,29 @@ impl Triangle {
             bbox: AABB::from_triangle(a, b, c)
         }
     }
+
+    pub fn a(&self) -> Point3 {
+        self.a
+    }
+
+    pub fn edge1(&self) -> Vec3 {
+        self.e1
+    }
+
+    pub fn edge2(&self) -> Vec3 {
+        self.e2
+    }
+
+    pub fn material(&self) -> Arc<dyn Material> {
+        self.mat.clone()
+    }
 }
 
 impl Hittable for Triangle {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord> {
         let p: Vec3 = Vec3::cross(r.direction(), &self.e2);
         let det: f64 = self.e1 * p;

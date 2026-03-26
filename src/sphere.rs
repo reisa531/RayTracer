@@ -52,9 +52,25 @@ impl Sphere {
 
         (phi / (2.0 * PI), theta / PI)
     }
+
+    pub fn center_ray(&self) -> Ray {
+        self.center
+    }
+
+    pub fn radius(&self) -> f64 {
+        self.radius
+    }
+
+    pub fn material(&self) -> Arc<dyn Material> {
+        self.mat.clone()
+    }
 }
 
 impl Hittable for Sphere {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord> {
         let current_center = self.center_at(r.time());
 

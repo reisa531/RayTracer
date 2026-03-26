@@ -48,9 +48,33 @@ impl Quad {
         }
         true
     }
+
+    pub fn q(&self) -> Point3 {
+        self.q
+    }
+
+    pub fn u(&self) -> Vec3 {
+        self.u
+    }
+
+    pub fn v(&self) -> Vec3 {
+        self.v
+    }
+
+    pub fn w(&self) -> Vec3 {
+        self.w
+    }
+
+    pub fn material(&self) -> Arc<dyn Material> {
+        self.mat.clone()
+    }
 }
 
 impl Hittable for Quad {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     fn hit(&self, r: &Ray, ray_t: Interval) -> Option<HitRecord> {
         let denom = self.normal * *r.direction();
         
