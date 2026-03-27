@@ -1,7 +1,6 @@
 /target
 /gpu
 */build
-/ir
 */.cache
 .vscode/
 .DS_Store
