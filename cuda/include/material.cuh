@@ -6,6 +6,7 @@
 #include "ray.cuh"
 #include "random.cuh"
 #include "texture.cuh"
+#include "pi.cuh"
 
 #include <cuda_runtime.h>
 #include <curand_kernel.h>

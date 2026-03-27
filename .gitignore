@@ -11,3 +11,7 @@
 *.log
 time.txt
 .clangd
+.vs/
+*/build-*/
+*/out/
+*.json

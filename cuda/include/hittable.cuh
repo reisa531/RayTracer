@@ -4,6 +4,7 @@
 #include "vec3.cuh"
 #include "ray.cuh"
 #include "interval.cuh"
+#include "pi.cuh"
 
 enum HittableType {
     UnknownHittable = 0,
