@@ -14,19 +14,49 @@ struct BVH {
     HittableList *hittables;
 
     __host__ __device__
-    HitRecord *hit(const Ray& ray, const Interval& ray_t, int node_index) const {
-        if (!bbox[node_index].hit(ray, ray_t)) {
-            return nullptr;
+    bool hit(const Ray& ray, const Interval& ray_t, HitRecord& out_record, int node_index = 0) const {
+        if (node_index < 0) {
+            return false;
         }
-        if (isLeaf[node_index]) {
-            return hittables->hit(hittableIndex[node_index], ray, ray_t);
+
+        constexpr int STACK_CAPACITY = 2048;
+        int stack[STACK_CAPACITY];
+        int top = 0;
+        stack[top++] = node_index;
+
+        bool any_hit = false;
+        float closest_t = ray_t.max;
+        HitRecord temp_record;
+
+        while (top > 0) {
+            int current = stack[--top];
+            if (current < 0) {
+                continue;
+            }
+
+            if (!bbox[current].hit(ray, Interval(ray_t.min, closest_t))) {
+                continue;
+            }
+
+            int obj_index = hittableIndex[current];
+            if (obj_index >= 0) {
+                if (hittables->hit(obj_index, ray, Interval(ray_t.min, closest_t), temp_record)) {
+                    any_hit = true;
+                    closest_t = temp_record.t;
+                    out_record = temp_record;
+                }
+                continue;
+            }
+
+            if (top + 2 >= STACK_CAPACITY) {
+                return any_hit;
+            }
+
+            stack[top++] = left[current];
+            stack[top++] = right[current];
         }
-        HitRecord *hit_left = hit(ray, ray_t, left[node_index]);
-        HitRecord *hit_right = hit(ray, ray_t, right[node_index]);
-        if (hit_left && hit_right) {
-            return (hit_left->t < hit_right->t) ? hit_left : hit_right;
-        }
-        return hit_left ? hit_left : hit_right;
+
+        return any_hit;
     }
 };
 

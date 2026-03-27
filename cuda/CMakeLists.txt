@@ -32,6 +32,12 @@ target_include_directories(cuda_parser_smoke PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+add_executable(gpu_render gpu_render.cu)
+target_include_directories(gpu_render PRIVATE
+	${CUDA_INCLUDE_DIRS}
+	${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
 add_test(
 	NAME cuda_parser_smoke_test
 	COMMAND cuda_parser_smoke ${CMAKE_CURRENT_SOURCE_DIR}/../ir/scenario_9.ir

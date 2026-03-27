@@ -189,7 +189,7 @@ fn encode_texture(ctx: &mut IrContext, tex: Arc<dyn Texture>) -> Result<i32, Str
             type_id: 2,
             c1: odd_solid.albedo(),
             c2: even_solid.albedo(),
-            c3: vec3_zero(),
+            c3: Vec3::new(checker.inv_scale(), 0.0, 0.0),
             resource_id: 0,
         }
     } else if let Some(image) = any.downcast_ref::<ImageTexture>() {
@@ -267,7 +267,7 @@ fn encode_material(ctx: &mut IrContext, mat: Arc<dyn Material>) -> Result<(i32, 
     } else if let Some(light) = any.downcast_ref::<DiffuseLight>() {
         let tex_id = encode_texture(ctx, light.texture())?;
         MaterialRow {
-            type_id: 1,
+            type_id: 4,
             texture_id: tex_id,
             color: vec3_zero(),
             p1: 0.0,
@@ -276,7 +276,7 @@ fn encode_material(ctx: &mut IrContext, mat: Arc<dyn Material>) -> Result<(i32, 
     } else if let Some(isotropic) = any.downcast_ref::<Isotropic>() {
         let tex_id = encode_texture(ctx, isotropic.texture())?;
         MaterialRow {
-            type_id: 1,
+            type_id: 5,
             texture_id: tex_id,
             color: vec3_zero(),
             p1: 0.0,

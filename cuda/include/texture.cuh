@@ -16,6 +16,7 @@ struct TextureList {
     Vec3 *color1;
     Vec3 *color2;
     Vec3 *color3;
+    float *checkerInvScale;
     int *resourceId;
     // Perlin *perlin; // Placeholder for future Perlin noise parameters
     TextureType *type;
@@ -27,12 +28,14 @@ struct TextureList {
             case SolidColor:
                 return color1[index];
             case Checker: {
-                int checker_u = static_cast<int>(floorf(u * 10.0f));
-                int checker_v = static_cast<int>(floorf(v * 10.0f));
-                if ((checker_u + checker_v) % 2 == 0) {
-                    return color1[index];
-                } else {
+                float inv_scale = checkerInvScale[index];
+                int ix = static_cast<int>(floorf(inv_scale * p.x));
+                int iy = static_cast<int>(floorf(inv_scale * p.y));
+                int iz = static_cast<int>(floorf(inv_scale * p.z));
+                if ((ix + iy + iz) % 2 == 0) {
                     return color2[index];
+                } else {
+                    return color1[index];
                 }
             }
             case Image:

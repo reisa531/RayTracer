@@ -29,13 +29,21 @@ struct HitRecord {
 };
 
 __host__ __device__
-HitRecord *hit_sphere(const Vec3 &center, float radius, const Ray &ray, const Interval& ray_t);
+bool hit_sphere(const Vec3 &center0, const Vec3& moving, float radius, const Ray &ray, const Interval& ray_t, HitRecord& out_record);
 
 __host__ __device__
-HitRecord *hit_triangle(const Vec3& a, const Vec3& edge1, const Vec3& edge2, const Ray& ray, const Interval& ray_t);
+bool hit_triangle(const Vec3& a, const Vec3& edge1, const Vec3& edge2, const Ray& ray, const Interval& ray_t, HitRecord& out_record);
 
 __host__ __device__
-HitRecord *hit_quad(const Vec3& q, const Vec3& u, const Vec3& v, const Vec3& w, const Ray& ray, const Interval& ray_t);
+bool hit_quad(const Vec3& q, const Vec3& u, const Vec3& v, const Vec3& w, const Ray& ray, const Interval& ray_t, HitRecord& out_record);
+
+__host__ __device__
+inline void sphere_uv(const Vec3& p, float& u, float& v) {
+    float theta = acosf(-p.y);
+    float phi = atan2f(-p.z, p.x) + M_PI;
+    u = phi / (2.0f * M_PI);
+    v = theta / M_PI;
+}
 
 // SoA style hittable list for GPU ray tracing
 struct HittableList {
@@ -52,19 +60,34 @@ struct HittableList {
     HittableType *type;
 
     __host__ __device__
-    HitRecord *hit(int index, const Ray& ray, const Interval& ray_t) const {
+    bool hit(int index, const Ray& ray, const Interval& ray_t, HitRecord& out_record) const {
         HittableType t = type[index];
+        bool hit_ok = false;
         switch (t) {
             case Sphere:
-                return hit_sphere(point[index], radius[index], ray, ray_t);
+                hit_ok = hit_sphere(point[index], moving[index], radius[index], ray, ray_t, out_record);
+                break;
             case Triangle:
-                return hit_triangle(point[index], u[index], v[index], ray, ray_t);
+                hit_ok = hit_triangle(point[index], u[index], v[index], ray, ray_t, out_record);
+                break;
             case Quad:
-                return hit_quad(point[index], u[index], v[index], aux1[index], ray, ray_t);
+                hit_ok = hit_quad(point[index], u[index], v[index], aux1[index], ray, ray_t, out_record);
+                break;
             default:
-                return nullptr;
+                return false;
         }
-        return nullptr;
+        if (!hit_ok) {
+            return false;
+        }
+
+        out_record.materialId = materialId[index];
+        if (t == Sphere) {
+            Vec3 center_at_t = point[index] + moving[index] * ray.time;
+            Vec3 outward = (out_record.p - center_at_t) / radius[index];
+            sphere_uv(outward, out_record.u, out_record.v);
+        }
+
+        return true;
     }
 };
 
@@ -84,94 +107,100 @@ struct HittableList {
 */
 
 __host__ __device__
-HitRecord *hit_sphere(const Vec3 &center, float radius, const Ray &ray, const Interval& ray_t) {
-    Vec3 oc = ray.origin - center;
-    float a = ray.direction.dot(ray.direction);
-    float b = 2.0f * oc.dot(ray.direction);
-    float c = oc.dot(oc) - radius * radius;
-    float discriminant = b * b - 4 * a * c;
+bool hit_sphere(const Vec3 &center0, const Vec3& moving, float radius, const Ray &ray, const Interval& ray_t, HitRecord& out_record) {
+    Vec3 center = center0 + moving * ray.time;
+    Vec3 oc = center - ray.origin;
+    float a = ray.direction.length_squared();
+    float h = ray.direction.dot(oc);
+    float c = oc.length_squared() - radius * radius;
+    float discriminant = h * h - a * c;
 
-    if (discriminant > 0) {
-        float sqrt_disc = sqrtf(discriminant);
-        float t1 = (-b - sqrt_disc) / (2.0f * a);
-        if (t1 < ray_t.max && t1 > ray_t.min) {
-            HitRecord *record = new HitRecord();
-            record->t = t1;
-            record->p = ray.at(t1);
-            record->normal = (record->p - center) / radius;
-            record->set_face_normal(ray, record->normal);
-            return record;
-        }
-        float t2 = (-b + sqrt_disc) / (2.0f * a);
-        if (t2 < ray_t.max && t2 > ray_t.min) {
-            HitRecord *record = new HitRecord();
-            record->t = t2;
-            record->p = ray.at(t2);
-            record->normal = (record->p - center) / radius;
-            record->set_face_normal(ray, record->normal);
-            return record;
-        }
+    if (discriminant < 0.0f) {
+        return false;
     }
-    return nullptr;
+
+    float sqrt_disc = sqrtf(discriminant);
+    float t1 = (h - sqrt_disc) / a;
+    if (t1 < ray_t.max && t1 > ray_t.min) {
+        out_record.t = t1;
+        out_record.p = ray.at(t1);
+        Vec3 outward = (out_record.p - center) / radius;
+        out_record.set_face_normal(ray, outward);
+        return true;
+    }
+
+    float t2 = (h + sqrt_disc) / a;
+    if (t2 < ray_t.max && t2 > ray_t.min) {
+        out_record.t = t2;
+        out_record.p = ray.at(t2);
+        Vec3 outward = (out_record.p - center) / radius;
+        out_record.set_face_normal(ray, outward);
+        return true;
+    }
+
+    return false;
 }
 
 __host__ __device__
-HitRecord *hit_triangle(const Vec3& a, const Vec3& edge1, const Vec3& edge2, const Ray& ray, const Interval& ray_t) {
+bool hit_triangle(const Vec3& a, const Vec3& edge1, const Vec3& edge2, const Ray& ray, const Interval& ray_t, HitRecord& out_record) {
     Vec3 h = ray.direction.cross(edge2);
     float det = edge1.dot(h);
-    if (fabsf(det) < 1e-6f) {
-        return nullptr;
+    if (fabsf(det) < 1e-8f) {
+        return false;
     }
     float f = 1.0f / det;
     Vec3 s = ray.origin - a;
     float u = f * s.dot(h);
     if (u < 0.0f || u > 1.0f) {
-        return nullptr;
+        return false;
     }
     Vec3 q = s.cross(edge1);
     float v = f * ray.direction.dot(q);
     if (v < 0.0f || u + v > 1.0f) {
-        return nullptr;
+        return false;
     }
     float t = f * edge2.dot(q);
     if (t < ray_t.min || t > ray_t.max) {
-        return nullptr;
+        return false;
     }
-    HitRecord *record = new HitRecord();
-    record->t = t;
-    record->p = ray.at(t);
-    record->normal = edge1.cross(edge2).normalize();
-    record->set_face_normal(ray, record->normal);
-    record->u = u;
-    record->v = v;
-    return record;
+    out_record.t = t;
+    out_record.p = ray.at(t);
+    out_record.normal = edge1.cross(edge2).normalize();
+    out_record.set_face_normal(ray, out_record.normal);
+    out_record.u = u;
+    out_record.v = v;
+    return true;
 }
 
 __host__ __device__
-HitRecord *hit_quad(const Vec3& q, const Vec3& u, const Vec3& v, const Vec3& w, const Ray& ray, const Interval& ray_t) {
-    float denom = u.cross(v).dot(ray.direction);
+bool hit_quad(const Vec3& q, const Vec3& u, const Vec3& v, const Vec3& w, const Ray& ray, const Interval& ray_t, HitRecord& out_record) {
+    Vec3 n = u.cross(v);
+    float denom = n.dot(ray.direction);
     if (fabsf(denom) < 1e-6f) {
-        return nullptr;
+        return false;
     }
-    float t = (q - ray.origin).dot(u.cross(v)) / denom;
+
+    float d = n.dot(q);
+    float t = (d - n.dot(ray.origin)) / denom;
     if (t < ray_t.min || t > ray_t.max) {
-        return nullptr;
+        return false;
     }
+
     Vec3 intersection = ray.at(t);
     Vec3 planar_hitpoint = intersection - q;
-    float u_coord = planar_hitpoint.dot(u) / u.dot(u);
-    float v_coord = planar_hitpoint.dot(v) / v.dot(v);
-    if (u_coord < 0.0f || u_coord > 1.0f || v_coord < 0.0f || v_coord > 1.0f) {
-        return nullptr;
+    float alpha = w.dot(planar_hitpoint.cross(v));
+    float beta = w.dot(u.cross(planar_hitpoint));
+    if (alpha < 0.0f || alpha > 1.0f || beta < 0.0f || beta > 1.0f) {
+        return false;
     }
-    HitRecord *record = new HitRecord();
-    record->t = t;
-    record->p = intersection;
-    record->normal = u.cross(v).normalize();
-    record->set_face_normal(ray, record->normal);
-    record->u = u_coord;
-    record->v = v_coord;
-    return record;
+
+    out_record.t = t;
+    out_record.p = intersection;
+    Vec3 outward = n.normalize();
+    out_record.set_face_normal(ray, outward);
+    out_record.u = alpha;
+    out_record.v = beta;
+    return true;
 }
 
 #endif // CUDA_HITTABLE_CUH

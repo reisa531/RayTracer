@@ -2,11 +2,7 @@
 #define CUDA_PARSER_CUH
 
 #include "aabb.cuh"
-#include "hittable.cuh"
-#include "material.cuh"
-#include "texture.cuh"
 
-#include <algorithm>
 #include <cctype>
 #include <fstream>
 #include <sstream>

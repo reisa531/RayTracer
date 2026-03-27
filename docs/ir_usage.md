@@ -85,3 +85,32 @@ cargo test -q --test ir_pipeline_test
 字段级定义（TEXTURE/MATERIAL/HITTABLE/BVH/RESOURCE）请参考：
 
 - `docs/cuda_ir.md`
+
+### 6. CUDA 端直接渲染（gpu_render）
+
+在 `cuda/` 目录构建并运行：
+
+```bash
+cd cuda
+cmake -S . -B build
+cmake --build build -j
+
+# 用 IR + 相机配置渲染到指定输出路径
+./build/gpu_render ../ir/scenario_1.ir /tmp/scenario_1_gpu.ppm ./config/camera_scenario_1.cfg
+```
+
+相机配置文件采用 `key=value` 文本格式（示例见 `cuda/config/camera_scenario_1.cfg`）：
+
+```text
+aspect_ratio=1.7777778
+image_width=400
+samples_per_pixel=50
+max_depth=20
+vfov=20.0
+lookfrom=13.0 2.0 3.0
+lookat=0.0 0.0 0.0
+vup=0.0 1.0 0.0
+defocus_angle=0.6
+focus_dist=10.0
+background=0.70 0.80 1.00
+```
