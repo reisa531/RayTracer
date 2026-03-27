@@ -39,16 +39,29 @@ struct MaterialList {
 
     __device__
     bool scatter(int material_id, const Ray& ray_in, const HitRecord& rec, curandState* rand_state, Vec3& attenuation, Ray& scattered) const {
+        if (count <= 0 || material_id < 0 || material_id >= count ||
+            textureId == nullptr || albedo == nullptr || constraint1 == nullptr ||
+            constraint2 == nullptr || type == nullptr) {
+            return false;
+        }
+
+        const int tex_id = textureId[material_id];
         MaterialType t = type[material_id];
         switch (t) {
             case Lambertian:
-                return scatter_lambertian(textureId[material_id], ray_in, rec, rand_state, attenuation, scattered, textures);
+                if (textures == nullptr || tex_id < 0 || tex_id >= textures->count) {
+                    return false;
+                }
+                return scatter_lambertian(tex_id, ray_in, rec, rand_state, attenuation, scattered, textures);
             case Metal:
                 return scatter_metal(albedo[material_id], constraint1[material_id], ray_in  , rec, rand_state, attenuation, scattered);
             case Dielectric:
                 return scatter_dielectric(constraint1[material_id], ray_in, rec, rand_state , attenuation, scattered);
             case Isotropic:
-                attenuation = textures->sample(textureId[material_id], rec.u, rec.v, rec.p);
+                if (textures == nullptr || tex_id < 0 || tex_id >= textures->count) {
+                    return false;
+                }
+                attenuation = textures->sample(tex_id, rec.u, rec.v, rec.p);
                 scattered = Ray(rec.p, random_unit(rand_state), ray_in.time);
                 return true;
             case DiffuseLight:
@@ -60,9 +73,18 @@ struct MaterialList {
 
     __device__
     Color emitted(int material_id, float u, float v, const Point3& p) const {
+        if (count <= 0 || material_id < 0 || material_id >= count ||
+            textureId == nullptr || type == nullptr || textures == nullptr) {
+            return Color(0.0f, 0.0f, 0.0f);
+        }
+
         MaterialType t = type[material_id];
         if (t == DiffuseLight) {
-            return textures->sample(textureId[material_id], u, v, p);
+            const int tex_id = textureId[material_id];
+            if (tex_id < 0 || tex_id >= textures->count) {
+                return Color(0.0f, 0.0f, 0.0f);
+            }
+            return textures->sample(tex_id, u, v, p);
         }
         return Color(0.0f, 0.0f, 0.0f);
     }

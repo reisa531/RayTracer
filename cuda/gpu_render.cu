@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdint>
+#include <cmath>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -40,7 +41,7 @@ struct CameraConfig {
     float defocus_angle = 0.6f;
     float focus_dist = 10.0f;
     Color background = Color(0.70f, 0.80f, 1.00f);
-    bool use_bvh = false;
+    bool use_bvh = true;
     unsigned long long rng_seed = 1337ULL;
 };
 
@@ -137,6 +138,154 @@ static CameraConfig load_camera_config(const std::string& path) {
     return cfg;
 }
 
+static inline bool finite_vec3(const Vec3& v) {
+    return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
+}
+
+static void validate_ir_for_cuda(const ParsedIR& ir) {
+    const int tex_count = static_cast<int>(ir.textures.size());
+    const int mat_count = static_cast<int>(ir.materials.size());
+    const int hit_count = static_cast<int>(ir.hittables.size());
+    const int bvh_count = static_cast<int>(ir.bvh.size());
+    const int res_count = static_cast<int>(ir.resources.size());
+
+    auto fail = [](const std::string& msg) -> void {
+        throw std::runtime_error("invalid IR: " + msg);
+    };
+
+    if (tex_count <= 0 || mat_count <= 0 || hit_count <= 0 || bvh_count <= 0) {
+        fail("critical sections must be non-empty");
+    }
+
+    for (int i = 0; i < tex_count; ++i) {
+        const ParsedTextureRow& row = ir.textures[i];
+        if (row.type < SolidColor || row.type > Perlin) {
+            fail("texture[" + std::to_string(i) + "] has unknown type " + std::to_string(row.type));
+        }
+        if (!finite_vec3(row.c1) || !finite_vec3(row.c2) || !finite_vec3(row.c3)) {
+            fail("texture[" + std::to_string(i) + "] contains non-finite color data");
+        }
+        if (row.type == Image) {
+            if (row.resourceId < 0 || row.resourceId >= res_count) {
+                fail("texture[" + std::to_string(i) + "] image resource id out of range");
+            }
+        } else if (row.resourceId != 0) {
+            fail("texture[" + std::to_string(i) + "] non-image texture has non-zero resource id");
+        }
+    }
+
+    for (int i = 0; i < mat_count; ++i) {
+        const ParsedMaterialRow& row = ir.materials[i];
+        if (row.type < Lambertian || row.type > Isotropic) {
+            fail("material[" + std::to_string(i) + "] has unknown type " + std::to_string(row.type));
+        }
+        if (row.textureId < 0 || row.textureId >= tex_count) {
+            fail("material[" + std::to_string(i) + "] texture id out of range");
+        }
+        if (!finite_vec3(row.color) || !std::isfinite(row.p1) || !std::isfinite(row.p2)) {
+            fail("material[" + std::to_string(i) + "] contains non-finite parameters");
+        }
+    }
+
+    for (int i = 0; i < hit_count; ++i) {
+        const ParsedHittableRow& row = ir.hittables[i];
+        if (row.type < Sphere || row.type > Quad) {
+            fail("hittable[" + std::to_string(i) + "] has unknown type " + std::to_string(row.type));
+        }
+        if (row.materialId < 0 || row.materialId >= mat_count) {
+            fail("hittable[" + std::to_string(i) + "] material id out of range");
+        }
+        if (row.textureId < 0 || row.textureId >= tex_count) {
+            fail("hittable[" + std::to_string(i) + "] texture id out of range");
+        }
+        if (!finite_vec3(row.p) || !finite_vec3(row.u) || !finite_vec3(row.v) ||
+            !finite_vec3(row.moving) || !finite_vec3(row.aux1) || !finite_vec3(row.aux2) ||
+            !std::isfinite(row.radius)) {
+            fail("hittable[" + std::to_string(i) + "] contains non-finite geometry");
+        }
+        if (row.type == Sphere && row.radius <= 0.0f) {
+            fail("hittable[" + std::to_string(i) + "] sphere radius must be > 0");
+        }
+    }
+
+    std::vector<int> parent_count(bvh_count, 0);
+    int leaf_count = 0;
+    for (int i = 0; i < bvh_count; ++i) {
+        const ParsedBvhRow& row = ir.bvh[i];
+        if (!std::isfinite(row.bbox.x.min) || !std::isfinite(row.bbox.x.max) ||
+            !std::isfinite(row.bbox.y.min) || !std::isfinite(row.bbox.y.max) ||
+            !std::isfinite(row.bbox.z.min) || !std::isfinite(row.bbox.z.max)) {
+            fail("bvh[" + std::to_string(i) + "] has non-finite bbox");
+        }
+        if (row.bbox.x.min > row.bbox.x.max || row.bbox.y.min > row.bbox.y.max || row.bbox.z.min > row.bbox.z.max) {
+            fail("bvh[" + std::to_string(i) + "] has invalid bbox interval");
+        }
+
+        if (row.hittableIndex >= 0) {
+            ++leaf_count;
+            if (row.hittableIndex >= hit_count) {
+                fail("bvh[" + std::to_string(i) + "] hittable index out of range");
+            }
+            if (row.left != -1 || row.right != -1) {
+                fail("bvh[" + std::to_string(i) + "] leaf must not have children");
+            }
+            continue;
+        }
+
+        if (row.left < 0 || row.left >= bvh_count || row.right < 0 || row.right >= bvh_count) {
+            fail("bvh[" + std::to_string(i) + "] internal node has invalid children");
+        }
+        if (row.left == i || row.right == i || row.left == row.right) {
+            fail("bvh[" + std::to_string(i) + "] internal node has self/duplicate child");
+        }
+
+        ++parent_count[row.left];
+        ++parent_count[row.right];
+    }
+
+    if (leaf_count != hit_count) {
+        fail("leaf count does not match hittable count");
+    }
+
+    if (parent_count[0] != 0) {
+        fail("bvh root node index 0 must have no parent");
+    }
+    for (int i = 1; i < bvh_count; ++i) {
+        if (parent_count[i] != 1) {
+            fail("bvh node[" + std::to_string(i) + "] must have exactly one parent");
+        }
+    }
+
+    std::vector<uint8_t> visited(static_cast<size_t>(bvh_count), 0);
+    std::vector<int> stack;
+    stack.reserve(static_cast<size_t>(bvh_count));
+    stack.push_back(0);
+
+    while (!stack.empty()) {
+        const int idx = stack.back();
+        stack.pop_back();
+        if (idx < 0 || idx >= bvh_count) {
+            fail("bvh traversal found out-of-range node index");
+        }
+        if (visited[static_cast<size_t>(idx)] != 0) {
+            continue;
+        }
+        visited[static_cast<size_t>(idx)] = 1;
+
+        const ParsedBvhRow& row = ir.bvh[idx];
+        if (row.hittableIndex < 0) {
+            stack.push_back(row.left);
+            stack.push_back(row.right);
+        }
+    }
+
+    for (int i = 0; i < bvh_count; ++i) {
+        if (visited[static_cast<size_t>(i)] == 0) {
+            fail("bvh node[" + std::to_string(i) + "] is unreachable from root");
+        }
+    }
+}
+
 struct DeviceScene {
     TextureList* d_textures = nullptr;
     MaterialList* d_materials = nullptr;
@@ -213,14 +362,12 @@ static void free_device_scene(DeviceScene& ds) {
 static DeviceScene build_device_scene(const ParsedIR& ir) {
     DeviceScene ds;
 
+    validate_ir_for_cuda(ir);
+
     const int tex_count = static_cast<int>(ir.textures.size());
     const int mat_count = static_cast<int>(ir.materials.size());
     const int hit_count = static_cast<int>(ir.hittables.size());
     const int bvh_count = static_cast<int>(ir.bvh.size());
-
-    if (tex_count <= 0 || mat_count <= 0 || hit_count <= 0 || bvh_count <= 0) {
-        throw std::runtime_error("IR has empty critical sections");
-    }
 
     std::vector<Vec3> h_tex_color1(tex_count), h_tex_color2(tex_count), h_tex_color3(tex_count);
     std::vector<float> h_tex_checker_inv_scale(tex_count, 0.0f);
@@ -393,6 +540,7 @@ static DeviceScene build_device_scene(const ParsedIR& ir) {
     CUDA_CHECK(cudaMemcpy(ds.d_bvh_is_leaf, h_bvh_is_leaf_u8.data(), sizeof(bool) * bvh_count, cudaMemcpyHostToDevice));
 
     BVH h_bvh{};
+    h_bvh.count = bvh_count;
     h_bvh.left = ds.d_bvh_left;
     h_bvh.right = ds.d_bvh_right;
     h_bvh.bbox = ds.d_bvh_bbox;

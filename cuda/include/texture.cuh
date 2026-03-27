@@ -23,6 +23,12 @@ struct TextureList {
 
     __device__
     Vec3 sample(int index, float u, float v, const Point3& p) const {
+        if (count <= 0 || index < 0 || index >= count ||
+            color1 == nullptr || color2 == nullptr || color3 == nullptr ||
+            checkerInvScale == nullptr || resourceId == nullptr || type == nullptr) {
+            return Vec3(1.0f, 0.0f, 1.0f);
+        }
+
         TextureType t = type[index];
         switch (t) {
             case SolidColor:

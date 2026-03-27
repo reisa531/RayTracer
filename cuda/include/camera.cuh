@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <thread>
 #include <vector>
+#include <iostream>
 
 static __host__ inline float clamp01(float x) {
     if (!isfinite(x)) return 0.0f;
@@ -180,6 +181,13 @@ struct Camera {
 
     __host__
     void render(FILE* output_path, BVH *bvh, MaterialList *materials) const {
+        std::cerr << "use_bvh: " << (use_bvh ? "true" : "false") << std::endl;
+
+        if (output_path == nullptr || bvh == nullptr || materials == nullptr) {
+            std::cerr << "render precondition failed: null output/bvh/materials pointer" << std::endl;
+            return;
+        }
+
         fprintf(output_path, "P3\n%d %d\n255\n", image_width, image_height);
 
         int total_pixels = image_width * image_height;
@@ -191,13 +199,36 @@ struct Camera {
         curandState *d_rand_states = nullptr;
         unsigned long long *d_progress_counter = nullptr;
         Camera *d_camera = nullptr;
+        cudaEvent_t render_done_event = nullptr;
+        cudaStream_t render_stream = nullptr;
+        cudaStream_t progress_stream = nullptr;
 
-        cudaMalloc(&d_framebuffer, sizeof(Color) * total_pixels);
-        cudaMalloc(&d_rand_states, sizeof(curandState) * total_pixels);
-        cudaMalloc(&d_progress_counter, sizeof(unsigned long long));
-        cudaMalloc(&d_camera, sizeof(Camera));
-        cudaMemset(d_progress_counter, 0, sizeof(unsigned long long));
-        cudaMemcpy(d_camera, this, sizeof(Camera), cudaMemcpyHostToDevice);
+        bool failed = false;
+        auto check_cuda = [&](cudaError_t err, const char* op) -> bool {
+            if (err == cudaSuccess) {
+                return true;
+            }
+            std::cerr << "CUDA error in " << op << ": " << cudaGetErrorString(err) << std::endl;
+            failed = true;
+            return false;
+        };
+
+        check_cuda(cudaMalloc(&d_framebuffer, sizeof(Color) * total_pixels), "cudaMalloc(d_framebuffer)");
+        if (!failed) {
+            check_cuda(cudaMalloc(&d_rand_states, sizeof(curandState) * total_pixels), "cudaMalloc(d_rand_states)");
+        }
+        if (!failed) {
+            check_cuda(cudaMalloc(&d_progress_counter, sizeof(unsigned long long)), "cudaMalloc(d_progress_counter)");
+        }
+        if (!failed) {
+            check_cuda(cudaMalloc(&d_camera, sizeof(Camera)), "cudaMalloc(d_camera)");
+        }
+        if (!failed) {
+            check_cuda(cudaMemset(d_progress_counter, 0, sizeof(unsigned long long)), "cudaMemset(d_progress_counter)");
+        }
+        if (!failed) {
+            check_cuda(cudaMemcpy(d_camera, this, sizeof(Camera), cudaMemcpyHostToDevice), "cudaMemcpy(d_camera)");
+        }
 
         dim3 block_dim(16, 16);
         dim3 grid_dim((image_width + block_dim.x - 1) / block_dim.x,
@@ -207,20 +238,57 @@ struct Camera {
             ? static_cast<unsigned long long>(std::chrono::high_resolution_clock::now().time_since_epoch().count())
             : rng_seed;
 
-        init_rand_kernel<<<grid_dim, block_dim>>>(d_rand_states, image_width, image_height, seed);
-        cudaDeviceSynchronize();
+        if (!failed) {
+            init_rand_kernel<<<grid_dim, block_dim>>>(d_rand_states, image_width, image_height, seed);
+            check_cuda(cudaGetLastError(), "init_rand_kernel launch");
+        }
+        if (!failed) {
+            check_cuda(cudaDeviceSynchronize(), "init_rand_kernel sync");
+        }
 
-        cudaEvent_t render_done_event;
-        cudaEventCreate(&render_done_event);
+        if (!failed) {
+            check_cuda(cudaEventCreate(&render_done_event), "cudaEventCreate(render_done_event)");
+        }
+        if (!failed) {
+            check_cuda(cudaStreamCreateWithFlags(&render_stream, cudaStreamNonBlocking), "cudaStreamCreateWithFlags(render_stream)");
+        }
+        if (!failed) {
+            check_cuda(cudaStreamCreateWithFlags(&progress_stream, cudaStreamNonBlocking), "cudaStreamCreateWithFlags(progress_stream)");
+        }
 
-        render_kernel<<<grid_dim, block_dim>>>(d_camera, bvh, materials, d_framebuffer,
-                               d_rand_states, d_progress_counter);
-        cudaEventRecord(render_done_event);
+        if (!failed) {
+            render_kernel<<<grid_dim, block_dim, 0, render_stream>>>(d_camera, bvh, materials, d_framebuffer,
+                           d_rand_states, d_progress_counter);
+            check_cuda(cudaGetLastError(), "render_kernel launch");
+        }
+        if (!failed) {
+            check_cuda(cudaEventRecord(render_done_event, render_stream), "cudaEventRecord(render_done_event)");
+        }
 
         const int bar_width = 40;
         unsigned long long progress = 0;
-        while (cudaEventQuery(render_done_event) == cudaErrorNotReady) {
-            cudaMemcpy(&progress, d_progress_counter, sizeof(unsigned long long), cudaMemcpyDeviceToHost);
+        while (!failed) {
+            cudaError_t query_status = cudaEventQuery(render_done_event);
+            if (query_status == cudaSuccess) {
+                break;
+            }
+            if (query_status != cudaErrorNotReady) {
+                check_cuda(query_status, "cudaEventQuery(render_done_event)");
+                break;
+            }
+
+            check_cuda(cudaMemcpyAsync(&progress, d_progress_counter, sizeof(unsigned long long),
+                            cudaMemcpyDeviceToHost, progress_stream), "cudaMemcpyAsync(progress)");
+            if (!failed) {
+                check_cuda(cudaStreamSynchronize(progress_stream), "cudaStreamSynchronize(progress_stream)");
+            }
+            if (failed) {
+                break;
+            }
+
+            if (progress > static_cast<unsigned long long>(total_pixels)) {
+                progress = static_cast<unsigned long long>(total_pixels);
+            }
             float ratio = static_cast<float>(progress) / static_cast<float>(total_pixels);
             int filled = static_cast<int>(ratio * bar_width);
 
@@ -234,30 +302,59 @@ struct Camera {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
 
-        cudaEventSynchronize(render_done_event);
-        progress = total_pixels;
-        fprintf(stderr, "\r[");
-        for (int k = 0; k < bar_width; ++k) {
-            fputc('=', stderr);
+        if (!failed) {
+            check_cuda(cudaEventSynchronize(render_done_event), "cudaEventSynchronize(render_done_event)");
         }
-        fprintf(stderr, "] 100.00%% (%d/%d)\n", total_pixels, total_pixels);
-        fflush(stderr);
 
-        std::vector<Color> host_framebuffer(total_pixels);
-        cudaMemcpy(host_framebuffer.data(), d_framebuffer, sizeof(Color) * total_pixels, cudaMemcpyDeviceToHost);
+        if (!failed) {
+            progress = total_pixels;
+            fprintf(stderr, "\r[");
+            for (int k = 0; k < bar_width; ++k) {
+                fputc('=', stderr);
+            }
+            fprintf(stderr, "] 100.00%% (%d/%d)\n", total_pixels, total_pixels);
+            fflush(stderr);
+        }
 
-        for (int j = 0; j < image_height; ++j) {
-            for (int i = 0; i < image_width; ++i) {
-                int idx = j * image_width + i;
-                write_color_ppm(output_path, host_framebuffer[idx]);
+        if (!failed) {
+            std::vector<Color> host_framebuffer(total_pixels);
+            check_cuda(cudaMemcpy(host_framebuffer.data(), d_framebuffer, sizeof(Color) * total_pixels, cudaMemcpyDeviceToHost),
+                       "cudaMemcpy(framebuffer D2H)");
+            if (!failed) {
+                for (int j = 0; j < image_height; ++j) {
+                    for (int i = 0; i < image_width; ++i) {
+                        int idx = j * image_width + i;
+                        write_color_ppm(output_path, host_framebuffer[idx]);
+                    }
+                }
             }
         }
 
-        cudaEventDestroy(render_done_event);
-        cudaFree(d_camera);
-        cudaFree(d_progress_counter);
-        cudaFree(d_rand_states);
-        cudaFree(d_framebuffer);
+        if (render_done_event != nullptr) {
+            cudaEventDestroy(render_done_event);
+        }
+        if (progress_stream != nullptr) {
+            cudaStreamDestroy(progress_stream);
+        }
+        if (render_stream != nullptr) {
+            cudaStreamDestroy(render_stream);
+        }
+        if (d_camera != nullptr) {
+            cudaFree(d_camera);
+        }
+        if (d_progress_counter != nullptr) {
+            cudaFree(d_progress_counter);
+        }
+        if (d_rand_states != nullptr) {
+            cudaFree(d_rand_states);
+        }
+        if (d_framebuffer != nullptr) {
+            cudaFree(d_framebuffer);
+        }
+
+        if (failed) {
+            std::cerr << "render aborted due to CUDA failure" << std::endl;
+        }
     }
 };
 

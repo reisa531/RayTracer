@@ -6,6 +6,7 @@
 
 // flat SoA BVH representation for GPU ray tracing
 struct BVH {
+    int count;
     int *left;
     int *right;
     AABB *bbox;
@@ -15,7 +16,9 @@ struct BVH {
 
     __host__ __device__
     bool hit(const Ray& ray, const Interval& ray_t, HitRecord& out_record, int node_index = 0) const {
-        if (node_index < 0) {
+        if (count <= 0 || node_index < 0 || node_index >= count ||
+            left == nullptr || right == nullptr || bbox == nullptr ||
+            hittableIndex == nullptr || hittables == nullptr) {
             return false;
         }
 
@@ -30,7 +33,7 @@ struct BVH {
 
         while (top > 0) {
             int current = stack[--top];
-            if (current < 0) {
+            if (current < 0 || current >= count) {
                 continue;
             }
 
@@ -39,7 +42,11 @@ struct BVH {
             }
 
             int obj_index = hittableIndex[current];
-            if (obj_index >= 0) {
+            bool leaf = isLeaf != nullptr ? isLeaf[current] : (obj_index >= 0);
+            if (leaf) {
+                if (obj_index < 0 || obj_index >= hittables->count) {
+                    continue;
+                }
                 if (hittables->hit(obj_index, ray, Interval(ray_t.min, closest_t), temp_record)) {
                     any_hit = true;
                     closest_t = temp_record.t;
@@ -52,8 +59,14 @@ struct BVH {
                 return any_hit;
             }
 
-            stack[top++] = left[current];
-            stack[top++] = right[current];
+            const int left_idx = left[current];
+            const int right_idx = right[current];
+            if (left_idx >= 0 && left_idx < count) {
+                stack[top++] = left_idx;
+            }
+            if (right_idx >= 0 && right_idx < count) {
+                stack[top++] = right_idx;
+            }
         }
 
         return any_hit;

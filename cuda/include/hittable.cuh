@@ -61,10 +61,20 @@ struct HittableList {
 
     __host__ __device__
     bool hit(int index, const Ray& ray, const Interval& ray_t, HitRecord& out_record) const {
+        if (count <= 0 || index < 0 || index >= count ||
+            point == nullptr || u == nullptr || v == nullptr || moving == nullptr ||
+            aux1 == nullptr || aux2 == nullptr || radius == nullptr || materialId == nullptr ||
+            textureId == nullptr || type == nullptr) {
+            return false;
+        }
+
         HittableType t = type[index];
         bool hit_ok = false;
         switch (t) {
             case Sphere:
+                if (radius[index] <= 0.0f) {
+                    return false;
+                }
                 hit_ok = hit_sphere(point[index], moving[index], radius[index], ray, ray_t, out_record);
                 break;
             case Triangle:
